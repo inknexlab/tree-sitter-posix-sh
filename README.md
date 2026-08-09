@@ -18,8 +18,13 @@ Add the grammar repository to `treesit-language-source-alist` and install it:
 (treesit-install-language-grammar 'posix_sh)
 ```
 
-Emacs does not include a Tree-sitter major mode for `posix_sh`; define a
-custom major mode that uses the parser.
+[sh-ts-mode](https://github.com/inknexlab/sh-ts-mode) provides a Tree-sitter
+major mode using this grammar.
+
+## Language server
+
+[sh-language-server](https://github.com/inknexlab/sh-language-server) uses
+this grammar for parsing and provides diagnostics and document formatting.
 
 ## Specification
 
