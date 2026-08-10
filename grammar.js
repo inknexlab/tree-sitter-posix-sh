@@ -561,13 +561,7 @@ const bracedParameterExpansion = ($, tail) =>
       seq(
         field("operator", $.parameter_length_operator),
         repeat($.line_continuation),
-        field(
-          "recovery",
-          alias(
-            $._parameter_tail_recovery_boundary,
-            $.parameter_expansion_recovery,
-          ),
-        ),
+        field("recovery", $.parameter_expansion_recovery),
       ),
     ),
     prec.dynamic(
@@ -577,13 +571,7 @@ const bracedParameterExpansion = ($, tail) =>
         repeat($.line_continuation),
         field("parameter", $._length_parameter),
         repeat($.line_continuation),
-        field(
-          "recovery",
-          alias(
-            $._parameter_tail_recovery_boundary,
-            $.parameter_expansion_recovery,
-          ),
-        ),
+        field("recovery", $.parameter_expansion_recovery),
         optional("}"),
       ),
     ),
@@ -620,10 +608,7 @@ const recoveringParameterExpansionTail = ($, word) =>
         field(
           "recovery",
           choice(
-            alias(
-              $._parameter_tail_recovery_boundary,
-              $.parameter_expansion_recovery,
-            ),
+            $.parameter_expansion_recovery,
             alias(
               $._parameter_operator_recovery,
               $.parameter_expansion_recovery,
@@ -649,14 +634,7 @@ const recoveringParameterExpansionTail = ($, word) =>
     ),
   );
 
-const recoveryField = ($, boundary) =>
-  field(
-    "recovery",
-    choice(
-      $.compound_command_recovery,
-      alias(prec.dynamic(-50, boundary), $.compound_command_recovery),
-    ),
-  );
+const recoveryField = ($) => field("recovery", $.compound_command_recovery);
 
 const recoveredCompoundListField = ($, name) =>
   field(name, alias($._missing_reserved_compound_list, $.compound_list));
@@ -673,7 +651,7 @@ const recoveringConditionalClause = ($, keyword) =>
         compoundListField($, "condition"),
         optional($._horizontal_layout),
         choice(
-          recoveryField($, $._compound_recovery_before_any_closer),
+          recoveryField($),
           seq(
             $.then_keyword,
             choice(
@@ -682,10 +660,7 @@ const recoveringConditionalClause = ($, keyword) =>
                 compoundListField($, "consequence"),
                 optional($._horizontal_layout),
                 choice(
-                  recoveryField(
-                    $,
-                    $._compound_recovery_before_loop_or_case_closer,
-                  ),
+                  recoveryField($),
                   field(
                     "alternative",
                     alias($._recovering_else_part, $.else_part),
@@ -693,10 +668,7 @@ const recoveringConditionalClause = ($, keyword) =>
                   seq(
                     field("alternative", $.else_part),
                     optional($._horizontal_layout),
-                    recoveryField(
-                      $,
-                      $._compound_recovery_before_loop_or_case_closer,
-                    ),
+                    recoveryField($),
                   ),
                 ),
               ),
@@ -716,7 +688,7 @@ const recoveringLoopClause = ($, keyword) =>
         compoundListField($, "condition"),
         optional($._horizontal_layout),
         choice(
-          recoveryField($, $._compound_recovery_before_any_closer),
+          recoveryField($),
           field("body", alias($._recovering_do_group, $.do_group)),
         ),
       ),
@@ -945,13 +917,8 @@ module.exports = grammar({
     $._closed_command_end,
     $._case_item_end,
     $._compound_command_recovery_boundary,
-    $._compound_recovery_before_any_closer,
-    $._compound_recovery_before_loop_or_case_closer,
-    $._compound_recovery_before_if_or_case_closer,
-    $._compound_recovery_before_if_or_loop_closer,
     $._parameter_missing_recovery_boundary,
     $._parameter_operator_recovery_boundary,
-    $._parameter_tail_recovery_boundary,
     $._parameter_expansion_recovery_boundary,
     $._boundary_command_recovery,
     $.command_recovery,
@@ -1785,7 +1752,7 @@ module.exports = grammar({
           choice(
             seq(
               optional($._horizontal_layout),
-              recoveryField($, $._compound_recovery_before_any_closer),
+              field("recovery", $.compound_command_recovery),
             ),
             seq(
               reservedWordSeparator($),
@@ -1796,7 +1763,7 @@ module.exports = grammar({
               field("separator", $.sequential_sep),
               optional($._horizontal_layout),
               choice(
-                recoveryField($, $._compound_recovery_before_any_closer),
+                field("recovery", $.compound_command_recovery),
                 field("body", alias($._recovering_do_group, $.do_group)),
               ),
             ),
@@ -1807,14 +1774,14 @@ module.exports = grammar({
               choice(
                 seq(
                   optional($._horizontal_layout),
-                  recoveryField($, $._compound_recovery_before_any_closer),
+                  field("recovery", $.compound_command_recovery),
                 ),
                 seq(
                   optional($._separator_boundary_layout),
                   field("separator", $.sequential_sep),
                   optional($._horizontal_layout),
                   choice(
-                    recoveryField($, $._compound_recovery_before_any_closer),
+                    field("recovery", $.compound_command_recovery),
                     field("body", alias($._recovering_do_group, $.do_group)),
                   ),
                 ),
@@ -1890,7 +1857,7 @@ module.exports = grammar({
               $.do_keyword,
               field("body", alias($._reserved_compound_list, $.compound_list)),
               optional($._horizontal_layout),
-              recoveryField($, $._compound_recovery_before_if_or_case_closer),
+              field("recovery", $.compound_command_recovery),
             ),
           ),
         ),
@@ -1967,10 +1934,7 @@ module.exports = grammar({
               seq(
                 compoundListField($, "body"),
                 optional($._horizontal_layout),
-                recoveryField(
-                  $,
-                  $._compound_recovery_before_loop_or_case_closer,
-                ),
+                recoveryField($),
               ),
             ),
           ),
@@ -2024,7 +1988,7 @@ module.exports = grammar({
           choice(
             seq(
               optional($._horizontal_layout),
-              recoveryField($, $._compound_recovery_before_any_closer),
+              field("recovery", $.compound_command_recovery),
             ),
             seq(
               $._word_separator,
@@ -2032,27 +1996,21 @@ module.exports = grammar({
               choice(
                 seq(
                   optional($._horizontal_layout),
-                  recoveryField($, $._compound_recovery_before_any_closer),
+                  field("recovery", $.compound_command_recovery),
                 ),
                 seq(
                   reservedWordLinebreak($),
                   choice(
-                    recoveryField($, $._compound_recovery_before_any_closer),
+                    field("recovery", $.compound_command_recovery),
                     seq(
                       field("in", $.in),
                       linebreakLayout($),
                       choice(
-                        recoveryField(
-                          $,
-                          $._compound_recovery_before_if_or_loop_closer,
-                        ),
+                        field("recovery", $.compound_command_recovery),
                         seq(
                           field("items", choice($.case_list, $.case_list_ns)),
                           optional($._horizontal_layout),
-                          recoveryField(
-                            $,
-                            $._compound_recovery_before_if_or_loop_closer,
-                          ),
+                          field("recovery", $.compound_command_recovery),
                         ),
                       ),
                     ),
