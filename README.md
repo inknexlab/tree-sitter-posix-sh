@@ -24,7 +24,8 @@ major mode using this grammar.
 ## Language server
 
 [sh-language-server](https://github.com/inknexlab/sh-language-server) uses
-this grammar for parsing and provides diagnostics and document formatting.
+this grammar for parsing and provides completion, diagnostics, formatting,
+hover information, and semantic tokens.
 
 ## Specification
 
