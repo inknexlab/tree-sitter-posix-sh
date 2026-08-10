@@ -6441,8 +6441,26 @@
                     "type": "FIELD",
                     "name": "recovery",
                     "content": {
-                      "type": "SYMBOL",
-                      "name": "compound_command_recovery"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "compound_command_recovery"
+                        },
+                        {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "PREC_DYNAMIC",
+                            "value": -50,
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_compound_recovery_before_any_closer"
+                            }
+                          },
+                          "named": true,
+                          "value": "compound_command_recovery"
+                        }
+                      ]
                     }
                   }
                 ]
@@ -6581,8 +6599,26 @@
                         "type": "FIELD",
                         "name": "recovery",
                         "content": {
-                          "type": "SYMBOL",
-                          "name": "compound_command_recovery"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "compound_command_recovery"
+                            },
+                            {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "PREC_DYNAMIC",
+                                "value": -50,
+                                "content": {
+                                  "type": "SYMBOL",
+                                  "name": "_compound_recovery_before_any_closer"
+                                }
+                              },
+                              "named": true,
+                              "value": "compound_command_recovery"
+                            }
+                          ]
                         }
                       },
                       {
@@ -6830,8 +6866,26 @@
                             "type": "FIELD",
                             "name": "recovery",
                             "content": {
-                              "type": "SYMBOL",
-                              "name": "compound_command_recovery"
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "compound_command_recovery"
+                                },
+                                {
+                                  "type": "ALIAS",
+                                  "content": {
+                                    "type": "PREC_DYNAMIC",
+                                    "value": -50,
+                                    "content": {
+                                      "type": "SYMBOL",
+                                      "name": "_compound_recovery_before_any_closer"
+                                    }
+                                  },
+                                  "named": true,
+                                  "value": "compound_command_recovery"
+                                }
+                              ]
                             }
                           }
                         ]
@@ -6878,8 +6932,26 @@
                                 "type": "FIELD",
                                 "name": "recovery",
                                 "content": {
-                                  "type": "SYMBOL",
-                                  "name": "compound_command_recovery"
+                                  "type": "CHOICE",
+                                  "members": [
+                                    {
+                                      "type": "SYMBOL",
+                                      "name": "compound_command_recovery"
+                                    },
+                                    {
+                                      "type": "ALIAS",
+                                      "content": {
+                                        "type": "PREC_DYNAMIC",
+                                        "value": -50,
+                                        "content": {
+                                          "type": "SYMBOL",
+                                          "name": "_compound_recovery_before_any_closer"
+                                        }
+                                      },
+                                      "named": true,
+                                      "value": "compound_command_recovery"
+                                    }
+                                  ]
                                 }
                               },
                               {
@@ -7472,8 +7544,26 @@
                   "type": "FIELD",
                   "name": "recovery",
                   "content": {
-                    "type": "SYMBOL",
-                    "name": "compound_command_recovery"
+                    "type": "CHOICE",
+                    "members": [
+                      {
+                        "type": "SYMBOL",
+                        "name": "compound_command_recovery"
+                      },
+                      {
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "PREC_DYNAMIC",
+                          "value": -50,
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_compound_recovery_before_if_or_case_closer"
+                          }
+                        },
+                        "named": true,
+                        "value": "compound_command_recovery"
+                      }
+                    ]
                   }
                 }
               ]
@@ -7643,8 +7733,26 @@
                         "type": "FIELD",
                         "name": "recovery",
                         "content": {
-                          "type": "SYMBOL",
-                          "name": "compound_command_recovery"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "compound_command_recovery"
+                            },
+                            {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "PREC_DYNAMIC",
+                                "value": -50,
+                                "content": {
+                                  "type": "SYMBOL",
+                                  "name": "_compound_recovery_before_any_closer"
+                                }
+                              },
+                              "named": true,
+                              "value": "compound_command_recovery"
+                            }
+                          ]
                         }
                       },
                       {
@@ -7705,8 +7813,26 @@
                                         "type": "FIELD",
                                         "name": "recovery",
                                         "content": {
-                                          "type": "SYMBOL",
-                                          "name": "compound_command_recovery"
+                                          "type": "CHOICE",
+                                          "members": [
+                                            {
+                                              "type": "SYMBOL",
+                                              "name": "compound_command_recovery"
+                                            },
+                                            {
+                                              "type": "ALIAS",
+                                              "content": {
+                                                "type": "PREC_DYNAMIC",
+                                                "value": -50,
+                                                "content": {
+                                                  "type": "SYMBOL",
+                                                  "name": "_compound_recovery_before_loop_or_case_closer"
+                                                }
+                                              },
+                                              "named": true,
+                                              "value": "compound_command_recovery"
+                                            }
+                                          ]
                                         }
                                       },
                                       {
@@ -7749,8 +7875,26 @@
                                             "type": "FIELD",
                                             "name": "recovery",
                                             "content": {
-                                              "type": "SYMBOL",
-                                              "name": "compound_command_recovery"
+                                              "type": "CHOICE",
+                                              "members": [
+                                                {
+                                                  "type": "SYMBOL",
+                                                  "name": "compound_command_recovery"
+                                                },
+                                                {
+                                                  "type": "ALIAS",
+                                                  "content": {
+                                                    "type": "PREC_DYNAMIC",
+                                                    "value": -50,
+                                                    "content": {
+                                                      "type": "SYMBOL",
+                                                      "name": "_compound_recovery_before_loop_or_case_closer"
+                                                    }
+                                                  },
+                                                  "named": true,
+                                                  "value": "compound_command_recovery"
+                                                }
+                                              ]
                                             }
                                           }
                                         ]
@@ -7989,8 +8133,26 @@
                             "type": "FIELD",
                             "name": "recovery",
                             "content": {
-                              "type": "SYMBOL",
-                              "name": "compound_command_recovery"
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "compound_command_recovery"
+                                },
+                                {
+                                  "type": "ALIAS",
+                                  "content": {
+                                    "type": "PREC_DYNAMIC",
+                                    "value": -50,
+                                    "content": {
+                                      "type": "SYMBOL",
+                                      "name": "_compound_recovery_before_any_closer"
+                                    }
+                                  },
+                                  "named": true,
+                                  "value": "compound_command_recovery"
+                                }
+                              ]
                             }
                           },
                           {
@@ -8051,8 +8213,26 @@
                                             "type": "FIELD",
                                             "name": "recovery",
                                             "content": {
-                                              "type": "SYMBOL",
-                                              "name": "compound_command_recovery"
+                                              "type": "CHOICE",
+                                              "members": [
+                                                {
+                                                  "type": "SYMBOL",
+                                                  "name": "compound_command_recovery"
+                                                },
+                                                {
+                                                  "type": "ALIAS",
+                                                  "content": {
+                                                    "type": "PREC_DYNAMIC",
+                                                    "value": -50,
+                                                    "content": {
+                                                      "type": "SYMBOL",
+                                                      "name": "_compound_recovery_before_loop_or_case_closer"
+                                                    }
+                                                  },
+                                                  "named": true,
+                                                  "value": "compound_command_recovery"
+                                                }
+                                              ]
                                             }
                                           },
                                           {
@@ -8095,8 +8275,26 @@
                                                 "type": "FIELD",
                                                 "name": "recovery",
                                                 "content": {
-                                                  "type": "SYMBOL",
-                                                  "name": "compound_command_recovery"
+                                                  "type": "CHOICE",
+                                                  "members": [
+                                                    {
+                                                      "type": "SYMBOL",
+                                                      "name": "compound_command_recovery"
+                                                    },
+                                                    {
+                                                      "type": "ALIAS",
+                                                      "content": {
+                                                        "type": "PREC_DYNAMIC",
+                                                        "value": -50,
+                                                        "content": {
+                                                          "type": "SYMBOL",
+                                                          "name": "_compound_recovery_before_loop_or_case_closer"
+                                                        }
+                                                      },
+                                                      "named": true,
+                                                      "value": "compound_command_recovery"
+                                                    }
+                                                  ]
                                                 }
                                               }
                                             ]
@@ -8172,8 +8370,26 @@
                         "type": "FIELD",
                         "name": "recovery",
                         "content": {
-                          "type": "SYMBOL",
-                          "name": "compound_command_recovery"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "compound_command_recovery"
+                            },
+                            {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "PREC_DYNAMIC",
+                                "value": -50,
+                                "content": {
+                                  "type": "SYMBOL",
+                                  "name": "_compound_recovery_before_loop_or_case_closer"
+                                }
+                              },
+                              "named": true,
+                              "value": "compound_command_recovery"
+                            }
+                          ]
                         }
                       }
                     ]
@@ -8288,8 +8504,26 @@
                         "type": "FIELD",
                         "name": "recovery",
                         "content": {
-                          "type": "SYMBOL",
-                          "name": "compound_command_recovery"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "compound_command_recovery"
+                            },
+                            {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "PREC_DYNAMIC",
+                                "value": -50,
+                                "content": {
+                                  "type": "SYMBOL",
+                                  "name": "_compound_recovery_before_any_closer"
+                                }
+                              },
+                              "named": true,
+                              "value": "compound_command_recovery"
+                            }
+                          ]
                         }
                       },
                       {
@@ -8417,8 +8651,26 @@
                         "type": "FIELD",
                         "name": "recovery",
                         "content": {
-                          "type": "SYMBOL",
-                          "name": "compound_command_recovery"
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "compound_command_recovery"
+                            },
+                            {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "PREC_DYNAMIC",
+                                "value": -50,
+                                "content": {
+                                  "type": "SYMBOL",
+                                  "name": "_compound_recovery_before_any_closer"
+                                }
+                              },
+                              "named": true,
+                              "value": "compound_command_recovery"
+                            }
+                          ]
                         }
                       },
                       {
@@ -8683,8 +8935,26 @@
                     "type": "FIELD",
                     "name": "recovery",
                     "content": {
-                      "type": "SYMBOL",
-                      "name": "compound_command_recovery"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "compound_command_recovery"
+                        },
+                        {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "PREC_DYNAMIC",
+                            "value": -50,
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_compound_recovery_before_any_closer"
+                            }
+                          },
+                          "named": true,
+                          "value": "compound_command_recovery"
+                        }
+                      ]
                     }
                   }
                 ]
@@ -8726,8 +8996,26 @@
                             "type": "FIELD",
                             "name": "recovery",
                             "content": {
-                              "type": "SYMBOL",
-                              "name": "compound_command_recovery"
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "compound_command_recovery"
+                                },
+                                {
+                                  "type": "ALIAS",
+                                  "content": {
+                                    "type": "PREC_DYNAMIC",
+                                    "value": -50,
+                                    "content": {
+                                      "type": "SYMBOL",
+                                      "name": "_compound_recovery_before_any_closer"
+                                    }
+                                  },
+                                  "named": true,
+                                  "value": "compound_command_recovery"
+                                }
+                              ]
                             }
                           }
                         ]
@@ -8842,8 +9130,26 @@
                                 "type": "FIELD",
                                 "name": "recovery",
                                 "content": {
-                                  "type": "SYMBOL",
-                                  "name": "compound_command_recovery"
+                                  "type": "CHOICE",
+                                  "members": [
+                                    {
+                                      "type": "SYMBOL",
+                                      "name": "compound_command_recovery"
+                                    },
+                                    {
+                                      "type": "ALIAS",
+                                      "content": {
+                                        "type": "PREC_DYNAMIC",
+                                        "value": -50,
+                                        "content": {
+                                          "type": "SYMBOL",
+                                          "name": "_compound_recovery_before_any_closer"
+                                        }
+                                      },
+                                      "named": true,
+                                      "value": "compound_command_recovery"
+                                    }
+                                  ]
                                 }
                               },
                               {
@@ -8893,8 +9199,26 @@
                                         "type": "FIELD",
                                         "name": "recovery",
                                         "content": {
-                                          "type": "SYMBOL",
-                                          "name": "compound_command_recovery"
+                                          "type": "CHOICE",
+                                          "members": [
+                                            {
+                                              "type": "SYMBOL",
+                                              "name": "compound_command_recovery"
+                                            },
+                                            {
+                                              "type": "ALIAS",
+                                              "content": {
+                                                "type": "PREC_DYNAMIC",
+                                                "value": -50,
+                                                "content": {
+                                                  "type": "SYMBOL",
+                                                  "name": "_compound_recovery_before_if_or_loop_closer"
+                                                }
+                                              },
+                                              "named": true,
+                                              "value": "compound_command_recovery"
+                                            }
+                                          ]
                                         }
                                       },
                                       {
@@ -8933,8 +9257,26 @@
                                             "type": "FIELD",
                                             "name": "recovery",
                                             "content": {
-                                              "type": "SYMBOL",
-                                              "name": "compound_command_recovery"
+                                              "type": "CHOICE",
+                                              "members": [
+                                                {
+                                                  "type": "SYMBOL",
+                                                  "name": "compound_command_recovery"
+                                                },
+                                                {
+                                                  "type": "ALIAS",
+                                                  "content": {
+                                                    "type": "PREC_DYNAMIC",
+                                                    "value": -50,
+                                                    "content": {
+                                                      "type": "SYMBOL",
+                                                      "name": "_compound_recovery_before_if_or_loop_closer"
+                                                    }
+                                                  },
+                                                  "named": true,
+                                                  "value": "compound_command_recovery"
+                                                }
+                                              ]
                                             }
                                           }
                                         ]
@@ -16309,8 +16651,13 @@
                 "type": "FIELD",
                 "name": "recovery",
                 "content": {
-                  "type": "SYMBOL",
-                  "name": "parameter_expansion_recovery"
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_parameter_tail_recovery_boundary"
+                  },
+                  "named": true,
+                  "value": "parameter_expansion_recovery"
                 }
               }
             ]
@@ -16356,8 +16703,13 @@
                 "type": "FIELD",
                 "name": "recovery",
                 "content": {
-                  "type": "SYMBOL",
-                  "name": "parameter_expansion_recovery"
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_parameter_tail_recovery_boundary"
+                  },
+                  "named": true,
+                  "value": "parameter_expansion_recovery"
                 }
               },
               {
@@ -16519,8 +16871,13 @@
                 "type": "FIELD",
                 "name": "recovery",
                 "content": {
-                  "type": "SYMBOL",
-                  "name": "parameter_expansion_recovery"
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_parameter_tail_recovery_boundary"
+                  },
+                  "named": true,
+                  "value": "parameter_expansion_recovery"
                 }
               }
             ]
@@ -16566,8 +16923,13 @@
                 "type": "FIELD",
                 "name": "recovery",
                 "content": {
-                  "type": "SYMBOL",
-                  "name": "parameter_expansion_recovery"
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_parameter_tail_recovery_boundary"
+                  },
+                  "named": true,
+                  "value": "parameter_expansion_recovery"
                 }
               },
               {
@@ -16734,8 +17096,13 @@
                       "type": "CHOICE",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "parameter_expansion_recovery"
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_parameter_tail_recovery_boundary"
+                          },
+                          "named": true,
+                          "value": "parameter_expansion_recovery"
                         },
                         {
                           "type": "ALIAS",
@@ -17029,8 +17396,13 @@
                       "type": "CHOICE",
                       "members": [
                         {
-                          "type": "SYMBOL",
-                          "name": "parameter_expansion_recovery"
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_parameter_tail_recovery_boundary"
+                          },
+                          "named": true,
+                          "value": "parameter_expansion_recovery"
                         },
                         {
                           "type": "ALIAS",
@@ -25112,11 +25484,31 @@
     },
     {
       "type": "SYMBOL",
+      "name": "_compound_recovery_before_any_closer"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_compound_recovery_before_loop_or_case_closer"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_compound_recovery_before_if_or_case_closer"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_compound_recovery_before_if_or_loop_closer"
+    },
+    {
+      "type": "SYMBOL",
       "name": "_parameter_missing_recovery_boundary"
     },
     {
       "type": "SYMBOL",
       "name": "_parameter_operator_recovery_boundary"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_parameter_tail_recovery_boundary"
     },
     {
       "type": "SYMBOL",

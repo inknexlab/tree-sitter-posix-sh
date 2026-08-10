@@ -642,15 +642,34 @@ echo ${outer:-${inner:-$(printf value)}}
     (newline_list)))
 
 ==================
-Unterminated parameter expansion remains a syntax error
-:error
+An unterminated parameter expansion retains its formal owner
 ==================
 
 echo ${open
 
 ---
 
-
+(program
+  (linebreak
+    (newline_list))
+  (complete_commands
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (word
+                      (parameter_expansion
+                        (variable_name)
+                        (parameter_expansion_recovery))))))))))))
+  (linebreak
+    (newline_list)))
 
 ==================
 Adjacent dollar source distinguishes parameters from text fallback

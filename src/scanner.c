@@ -133,8 +133,13 @@ enum TokenType {
   CLOSED_COMMAND_END,
   CASE_ITEM_END,
   COMPOUND_COMMAND_RECOVERY_BOUNDARY,
+  COMPOUND_RECOVERY_BEFORE_ANY_CLOSER,
+  COMPOUND_RECOVERY_BEFORE_LOOP_OR_CASE_CLOSER,
+  COMPOUND_RECOVERY_BEFORE_IF_OR_CASE_CLOSER,
+  COMPOUND_RECOVERY_BEFORE_IF_OR_LOOP_CLOSER,
   PARAMETER_MISSING_RECOVERY_BOUNDARY,
   PARAMETER_OPERATOR_RECOVERY_BOUNDARY,
+  PARAMETER_TAIL_RECOVERY_BOUNDARY,
   PARAMETER_EXPANSION_RECOVERY_BOUNDARY,
   BOUNDARY_COMMAND_RECOVERY,
   COMMAND_RECOVERY,
@@ -2400,6 +2405,56 @@ static bool is_recovery_reserved_word(const char *word) {
   );
 }
 
+static bool is_compound_recovery_symbol(enum TokenType symbol) {
+  return symbol ==
+    COMPOUND_COMMAND_RECOVERY_BOUNDARY ||
+    (symbol >=
+      COMPOUND_RECOVERY_BEFORE_ANY_CLOSER &&
+      symbol <= COMPOUND_RECOVERY_BEFORE_IF_OR_LOOP_CLOSER);
+}
+
+static enum TokenType
+staged_compound_recovery_symbol(const bool *valid_symbols) {
+  for (
+    enum TokenType symbol = COMPOUND_RECOVERY_BEFORE_ANY_CLOSER;
+    symbol <= COMPOUND_RECOVERY_BEFORE_IF_OR_LOOP_CLOSER;
+    symbol += 1
+  ) {
+    if (valid_symbols[symbol]) {
+      return symbol;
+    }
+  }
+  return TOKEN_COUNT;
+}
+
+static bool compound_recovery_accepts_reserved_word(
+  enum TokenType symbol,
+  const char *word
+) {
+  bool is_if_closer = strcmp(word, "fi") == 0;
+  bool is_loop_closer = strcmp(word, "done") == 0;
+  bool is_case_closer = strcmp(word, "esac") == 0;
+  switch (symbol) {
+  case COMPOUND_RECOVERY_BEFORE_ANY_CLOSER:
+    return is_if_closer || is_loop_closer || is_case_closer;
+  case COMPOUND_RECOVERY_BEFORE_LOOP_OR_CASE_CLOSER:
+    return is_loop_closer || is_case_closer;
+  case COMPOUND_RECOVERY_BEFORE_IF_OR_CASE_CLOSER:
+    return is_if_closer || is_case_closer;
+  case COMPOUND_RECOVERY_BEFORE_IF_OR_LOOP_CLOSER:
+    return is_if_closer || is_loop_closer;
+  default:
+    return false;
+  }
+}
+
+static enum TokenType compound_recovery_symbol(const bool *valid_symbols) {
+  if (valid_symbols[COMPOUND_COMMAND_RECOVERY_BOUNDARY]) {
+    return COMPOUND_COMMAND_RECOVERY_BOUNDARY;
+  }
+  return staged_compound_recovery_symbol(valid_symbols);
+}
+
 static bool scan_recovery_boundary(
   TSLexer *lexer,
   enum TokenType symbol,
@@ -2416,6 +2471,30 @@ static bool scan_recovery_boundary(
         lexer->lookahead ==
         ')' ||
         lexer->lookahead == '`');
+  } else if (is_compound_recovery_symbol(symbol)) {
+    is_direct_boundary = false;
+  } else if (symbol == REDIRECTION_TARGET_RECOVERY) {
+    is_direct_boundary =
+      (is_direct_boundary ||
+        lexer->lookahead ==
+        0 ||
+        lexer->lookahead ==
+        '\n' ||
+        lexer->lookahead ==
+        ')' ||
+        lexer->lookahead ==
+        ';' ||
+        lexer->lookahead ==
+        '&' ||
+        lexer->lookahead ==
+        '|' ||
+        lexer->lookahead ==
+        '<' ||
+        lexer->lookahead ==
+        '>' ||
+        lexer->lookahead ==
+        '`' ||
+        lexer->lookahead == '#');
   } else if (symbol != SEPARATOR_RECOVERY) {
     is_direct_boundary =
       (is_direct_boundary ||
@@ -2452,6 +2531,15 @@ static bool scan_recovery_boundary(
     return false;
   }
 
+  if (
+    is_compound_recovery_symbol(symbol) &&
+    is_recovery_reserved_word(word) &&
+    compound_recovery_accepts_reserved_word(symbol, word)
+  ) {
+    lexer->result_symbol = (TSSymbol)symbol;
+    return true;
+  }
+
   size_t word_count = sizeof(RESERVED_WORDS) / sizeof(RESERVED_WORDS[0]);
   for (size_t index = 0; index < word_count; index += 1) {
     const struct ReservedWord *reserved_word = &RESERVED_WORDS[index];
@@ -2464,7 +2552,7 @@ static bool scan_recovery_boundary(
     }
   }
 
-  if (symbol == COMPOUND_COMMAND_RECOVERY_BOUNDARY) {
+  if (is_compound_recovery_symbol(symbol)) {
     return false;
   }
 
@@ -4898,6 +4986,38 @@ bool tree_sitter_posix_sh_external_scanner_scan(
   }
 
   if (
+    valid_symbols[SEPARATOR_RECOVERY] &&
+    !valid_symbols[CASE_ITEM_END] &&
+    !valid_symbols[COMPOUND_RECOVERY_BEFORE_IF_OR_LOOP_CLOSER] &&
+    lexer->lookahead == ';'
+  ) {
+    lexer->mark_end(lexer);
+    if (scan_case_item_terminator(lexer)) {
+      lexer->result_symbol = SEPARATOR_RECOVERY;
+      return true;
+    }
+    return false;
+  }
+
+  enum TokenType case_recovery_symbol =
+    staged_compound_recovery_symbol(valid_symbols);
+  if (
+    case_recovery_symbol !=
+    TOKEN_COUNT &&
+    case_recovery_symbol !=
+    COMPOUND_RECOVERY_BEFORE_IF_OR_LOOP_CLOSER &&
+    !valid_symbols[CASE_ITEM_END] &&
+    lexer->lookahead == ';'
+  ) {
+    lexer->mark_end(lexer);
+    if (scan_case_item_terminator(lexer)) {
+      lexer->result_symbol = (TSSymbol)case_recovery_symbol;
+      return true;
+    }
+    return false;
+  }
+
+  if (
     valid_symbols[CASE_ITEM_END] &&
     (lexer->lookahead ==
       ' ' ||
@@ -4977,19 +5097,31 @@ bool tree_sitter_posix_sh_external_scanner_scan(
   if (
     (valid_symbols[PARAMETER_MISSING_RECOVERY_BOUNDARY] ||
       valid_symbols[PARAMETER_OPERATOR_RECOVERY_BOUNDARY] ||
+      valid_symbols[PARAMETER_TAIL_RECOVERY_BOUNDARY] ||
       valid_symbols[PARAMETER_EXPANSION_RECOVERY_BOUNDARY])
   ) {
     enum TokenType symbol = valid_symbols[PARAMETER_MISSING_RECOVERY_BOUNDARY]
       ? PARAMETER_MISSING_RECOVERY_BOUNDARY
       : (valid_symbols[PARAMETER_OPERATOR_RECOVERY_BOUNDARY]
             ? PARAMETER_OPERATOR_RECOVERY_BOUNDARY
-            : PARAMETER_EXPANSION_RECOVERY_BOUNDARY);
+            : (valid_symbols[PARAMETER_TAIL_RECOVERY_BOUNDARY]
+                  ? PARAMETER_TAIL_RECOVERY_BOUNDARY
+                  : PARAMETER_EXPANSION_RECOVERY_BOUNDARY));
     if (scan_parameter_expansion_recovery_boundary(lexer, symbol)) {
       return true;
     }
   }
 
-  if (valid_symbols[REDIRECTION_TARGET_RECOVERY] && lexer->lookahead == '\n') {
+  if (
+    valid_symbols[REDIRECTION_TARGET_RECOVERY] &&
+    (lexer->lookahead ==
+      '\n' ||
+      lexer->lookahead ==
+      '|' ||
+      lexer->lookahead ==
+      '<' ||
+      lexer->lookahead == '>')
+  ) {
     return scan_recovery_boundary(
       lexer,
       REDIRECTION_TARGET_RECOVERY,
@@ -4999,7 +5131,8 @@ bool tree_sitter_posix_sh_external_scanner_scan(
 
   if (
     (valid_symbols[COMMAND_RECOVERY] ||
-      valid_symbols[COMPOUND_COMMAND_RECOVERY_BOUNDARY] ||
+      compound_recovery_symbol(valid_symbols) !=
+      TOKEN_COUNT ||
       valid_symbols[BOUNDARY_COMMAND_RECOVERY] ||
       valid_symbols[SEPARATOR_RECOVERY] ||
       valid_symbols[REDIRECTION_TARGET_RECOVERY]) &&
@@ -5029,12 +5162,18 @@ bool tree_sitter_posix_sh_external_scanner_scan(
         lexer->lookahead ==
         '}' ||
         is_lowercase_letter(lexer->lookahead));
+    enum TokenType staged_symbol =
+      staged_compound_recovery_symbol(valid_symbols);
+    enum TokenType compound_symbol =
+      is_lowercase_letter(lexer->lookahead) && staged_symbol != TOKEN_COUNT
+      ? staged_symbol
+      : compound_recovery_symbol(valid_symbols);
     enum TokenType recovery_symbol = valid_symbols[SEPARATOR_RECOVERY]
       ? SEPARATOR_RECOVERY
       : (valid_symbols[REDIRECTION_TARGET_RECOVERY]
             ? REDIRECTION_TARGET_RECOVERY
-            : (valid_symbols[COMPOUND_COMMAND_RECOVERY_BOUNDARY]
-                  ? COMPOUND_COMMAND_RECOVERY_BOUNDARY
+            : (compound_symbol != TOKEN_COUNT
+                  ? compound_symbol
                   : (use_boundary_command_recovery
                         ? BOUNDARY_COMMAND_RECOVERY
                         : (valid_symbols[COMMAND_RECOVERY]

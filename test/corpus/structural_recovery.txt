@@ -146,6 +146,341 @@ printf '%s\n' "${name:"
     (newline_list)))
 
 ================================================================================
+An incomplete parameter stops at its surrounding source boundary
+================================================================================
+
+echo ${name
+echo "${quoted"
+echo ${#
+
+--------------------------------------------------------------------------------
+
+(program
+  (linebreak
+    (newline_list))
+  (complete_commands
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (word
+                      (parameter_expansion
+                        (variable_name)
+                        (parameter_expansion_recovery)))))))))))
+    (newline_list)
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (word
+                      (double_quoted
+                        (parameter_expansion
+                          (variable_name)
+                          (parameter_expansion_recovery))))))))))))
+    (newline_list)
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (word
+                      (parameter_expansion
+                        (parameter_length_operator)
+                        (parameter_expansion_recovery))))))))))))
+  (linebreak
+    (newline_list)))
+
+================================================================================
+Missing redirection targets preserve following shell operators
+================================================================================
+
+echo > | next
+echo > <input
+echo > >output
+
+--------------------------------------------------------------------------------
+
+(program
+  (linebreak
+    (newline_list))
+  (complete_commands
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (io_redirect
+                      (io_file
+                        (filename
+                          (redirection_target_recovery)))))))
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal))))))))))
+    (newline_list)
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (io_redirect
+                      (io_file
+                        (filename
+                          (redirection_target_recovery))))
+                    (io_redirect
+                      (io_file
+                        (filename
+                          (word
+                            (literal)))))))))))))
+    (newline_list)
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (simple_command
+                  (cmd_name
+                    (word
+                      (literal)))
+                  (cmd_suffix
+                    (io_redirect
+                      (io_file
+                        (filename
+                          (redirection_target_recovery))))
+                    (io_redirect
+                      (io_file
+                        (filename
+                          (word
+                            (literal))))))))))))))
+  (linebreak
+    (newline_list)))
+
+================================================================================
+Nested incomplete compounds stop before enclosing closers
+================================================================================
+
+if outer; then while inner; do body; fi
+while outer; do if inner; then body; done
+case value in item) if inner; then body;; esac
+
+--------------------------------------------------------------------------------
+
+(program
+  (linebreak
+    (newline_list))
+  (complete_commands
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (compound_command
+                  (if_clause
+                    (if_keyword)
+                    (compound_list
+                      (term
+                        (and_or
+                          (pipeline
+                            (pipe_sequence
+                              (command
+                                (simple_command
+                                  (cmd_name
+                                    (word
+                                      (literal)))))))))
+                      (separator
+                        (separator_op)))
+                    (then_keyword)
+                    (compound_list
+                      (term
+                        (and_or
+                          (pipeline
+                            (pipe_sequence
+                              (command
+                                (compound_command
+                                  (while_clause
+                                    (while_keyword)
+                                    (compound_list
+                                      (term
+                                        (and_or
+                                          (pipeline
+                                            (pipe_sequence
+                                              (command
+                                                (simple_command
+                                                  (cmd_name
+                                                    (word
+                                                      (literal)))))))))
+                                      (separator
+                                        (separator_op)))
+                                    (do_group
+                                      (do_keyword)
+                                      (compound_list
+                                        (term
+                                          (and_or
+                                            (pipeline
+                                              (pipe_sequence
+                                                (command
+                                                  (simple_command
+                                                    (cmd_name
+                                                      (word
+                                                        (literal)))))))))
+                                        (separator
+                                          (separator_op)))
+                                      (compound_command_recovery))))))))))
+                    (fi_keyword)))))))))
+    (newline_list)
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (compound_command
+                  (while_clause
+                    (while_keyword)
+                    (compound_list
+                      (term
+                        (and_or
+                          (pipeline
+                            (pipe_sequence
+                              (command
+                                (simple_command
+                                  (cmd_name
+                                    (word
+                                      (literal)))))))))
+                      (separator
+                        (separator_op)))
+                    (do_group
+                      (do_keyword)
+                      (compound_list
+                        (term
+                          (and_or
+                            (pipeline
+                              (pipe_sequence
+                                (command
+                                  (compound_command
+                                    (if_clause
+                                      (if_keyword)
+                                      (compound_list
+                                        (term
+                                          (and_or
+                                            (pipeline
+                                              (pipe_sequence
+                                                (command
+                                                  (simple_command
+                                                    (cmd_name
+                                                      (word
+                                                        (literal)))))))))
+                                        (separator
+                                          (separator_op)))
+                                      (then_keyword)
+                                      (compound_list
+                                        (term
+                                          (and_or
+                                            (pipeline
+                                              (pipe_sequence
+                                                (command
+                                                  (simple_command
+                                                    (cmd_name
+                                                      (word
+                                                        (literal)))))))))
+                                        (separator
+                                          (separator_op)))
+                                      (compound_command_recovery)))))))))
+                      (done_keyword))))))))))
+    (newline_list)
+    (complete_command
+      (list
+        (and_or
+          (pipeline
+            (pipe_sequence
+              (command
+                (compound_command
+                  (case_clause
+                    (case_keyword)
+                    (word
+                      (literal))
+                    (in
+                      (in_keyword))
+                    (case_list
+                      (case_item
+                        (pattern_list
+                          (word
+                            (literal)))
+                        (compound_list
+                          (term
+                            (and_or
+                              (pipeline
+                                (pipe_sequence
+                                  (command
+                                    (compound_command
+                                      (if_clause
+                                        (if_keyword)
+                                        (compound_list
+                                          (term
+                                            (and_or
+                                              (pipeline
+                                                (pipe_sequence
+                                                  (command
+                                                    (simple_command
+                                                      (cmd_name
+                                                        (word
+                                                          (literal)))))))))
+                                          (separator
+                                            (separator_op)))
+                                        (then_keyword)
+                                        (compound_list
+                                          (term
+                                            (and_or
+                                              (pipeline
+                                                (pipe_sequence
+                                                  (command
+                                                    (simple_command
+                                                      (cmd_name
+                                                        (word
+                                                          (literal)))))))))
+                                          (separator_recovery))
+                                        (compound_command_recovery)))))))))
+                        (dsemi)))
+                    (esac_keyword))))))))))
+  (linebreak
+    (newline_list)))
+
+================================================================================
 A redirection without a target recovers before a raw newline
 ================================================================================
 
