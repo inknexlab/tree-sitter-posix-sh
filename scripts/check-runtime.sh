@@ -1076,6 +1076,26 @@ assert_valid_incremental_equals_fresh \
   "24 1" \
   "39 1"
 
+command_substitution_layout_initial="$runtime_directory/command-substitution-layout-initial.sh"
+command_substitution_layout_final="$runtime_directory/command-substitution-layout-final.sh"
+printf '%s\n' 'echo $(first;)' >"$command_substitution_layout_initial"
+printf '%s\n' 'echo $(first; )' >"$command_substitution_layout_final"
+assert_valid_incremental_equals_fresh \
+  "$command_substitution_layout_initial" \
+  "$command_substitution_layout_final" \
+  "insert-layout-before-command-substitution-closer" \
+  "13 0  "
+
+backquote_layout_initial="$runtime_directory/backquote-layout-initial.sh"
+backquote_layout_final="$runtime_directory/backquote-layout-final.sh"
+printf '%s\n' 'echo `first;`' >"$backquote_layout_initial"
+printf '%s\n' 'echo `first; `' >"$backquote_layout_final"
+assert_valid_incremental_equals_fresh \
+  "$backquote_layout_initial" \
+  "$backquote_layout_final" \
+  "insert-layout-before-backquote-closer" \
+  "12 0  "
+
 outer_closer_source="$runtime_directory/recovery-enclosing-closers.sh"
 outer_closer_output="$runtime_directory/recovery-enclosing-closers.out"
 outer_closer_cst="$runtime_directory/recovery-enclosing-closers.cst"
