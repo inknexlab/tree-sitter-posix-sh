@@ -10,7 +10,6 @@ const PARAMETER_PATTERN_TEXT_PATTERN = RegExp(
 
 const PATTERN_SPECIAL_PLAIN_CHARACTER_PATTERN = /[^ \t\n;&|<>()\\'"$`:.=\]-]/;
 const PARAMETER_DEFERRED_EXTRA_CHARACTER_PATTERN = /[ \t\n;&|<>()]/;
-const ARITHMETIC_SOURCE_PRECEDENCE = 1;
 const ASSIGNMENT_WORD_PRECEDENCE = 3;
 
 // One row per POSIX binary-operator precedence level, from lowest to highest
@@ -157,12 +156,9 @@ const arithmeticBoundaryLayout = ($, boundary) =>
   seq(boundary, optional($._arithmetic_layout));
 
 const arithmeticOperatorSegment = ($, boundary, operator) =>
-  prec.dynamic(
-    ARITHMETIC_SOURCE_PRECEDENCE,
-    seq(
-      arithmeticBoundaryLayout($, boundary),
-      field("operator", alias(operator, $.arithmetic_operator)),
-    ),
+  seq(
+    arithmeticBoundaryLayout($, boundary),
+    field("operator", alias(operator, $.arithmetic_operator)),
   );
 
 const arithmeticOperandLayout = (
@@ -264,6 +260,23 @@ const arithmeticExpansionEnd = ($) =>
   choice(
     seq(")", $._arithmetic_second_right_parenthesis),
     hereDocumentBoundaryRecovery($),
+  );
+
+const arithmeticExpansionStart = ($, marker) =>
+  seq($._command_or_arithmetic_substitution_start, alias(marker, "("));
+
+const closedArithmeticExpansion = ($, start, expression) =>
+  seq(
+    start,
+    optional($._arithmetic_layout),
+    choice(
+      seq(
+        field("expression", expression),
+        arithmeticClosingLayout($),
+        arithmeticExpansionEnd($),
+      ),
+      hereDocumentBoundaryRecovery($),
+    ),
   );
 
 const linebreakLayout = ($) =>
@@ -1120,6 +1133,8 @@ module.exports = grammar({
     $._arithmetic_operand_boundary,
     $._arithmetic_closing_boundary,
     $._arithmetic_left_parenthesis,
+    $._arithmetic_dynamic_left_parenthesis,
+    $._arithmetic_incomplete_left_parenthesis,
     $._pattern_special_left_bracket,
     $._literal_hash,
     $._comment_boundary,
@@ -1355,11 +1370,7 @@ module.exports = grammar({
     [$._double_quoted_braced_parameter_expansion],
     [$.case_item],
     [$._special_parameter_hash, $.parameter_length_operator],
-    [$._arithmetic_source_part, $._arithmetic_primary_expression],
     [$._parenthesized_arithmetic_lvalue, $._arithmetic_primary_expression],
-    [$._arithmetic_source_part, $.arithmetic_assignment_expression],
-    [$._arithmetic_runtime_fragment, $._arithmetic_primary_expression],
-    [$.arithmetic_dynamic_expression, $.arithmetic_expansion],
   ],
 
   rules: {
@@ -3250,70 +3261,56 @@ module.exports = grammar({
     _substitution_body: ($) => prec.left(commandSequenceBody($)),
 
     _arithmetic_expansion_start: ($) =>
-      seq(
-        $._command_or_arithmetic_substitution_start,
-        alias($._arithmetic_left_parenthesis, "("),
-      ),
+      arithmeticExpansionStart($, $._arithmetic_left_parenthesis),
 
-    // When the input ends before the arithmetic-versus-substitution choice is
-    // determined, the source recovers as an incomplete arithmetic expansion
-    // holding its flat source parts, per the CST contract. The end-of-input
-    // marker keeps this variant out of every non-final position.
+    _arithmetic_dynamic_expansion_start: ($) =>
+      arithmeticExpansionStart($, $._arithmetic_dynamic_left_parenthesis),
+
+    _arithmetic_incomplete_expansion_start: ($) =>
+      arithmeticExpansionStart($, $._arithmetic_incomplete_left_parenthesis),
+
+    // The external scanner settles the arithmetic reading at the second left
+    // parenthesis, so these variants are mutually exclusive: a structured
+    // expression, a flat source run around runtime fragments, and an
+    // incomplete expansion recovering at the end of its input or at the
+    // boundary of an enclosing here-document. Racing the readings instead
+    // would let an edited tree keep flat-reading subtrees that an incremental
+    // reparse of the restored source reuses over the structured reading.
     arithmetic_expansion: ($) =>
       choice(
-        seq(
+        closedArithmeticExpansion(
+          $,
           $._arithmetic_expansion_start,
-          optional($._arithmetic_layout),
-          choice(
-            seq(
-              field(
-                "expression",
-                choice(
-                  prec.dynamic(2, $._arithmetic_assignment_expression),
-                  $.arithmetic_dynamic_expression,
-                ),
-              ),
-              arithmeticClosingLayout($),
-              arithmeticExpansionEnd($),
-            ),
-            hereDocumentBoundaryRecovery($),
-          ),
+          $._arithmetic_assignment_expression,
         ),
-        prec.dynamic(
-          -100,
-          seq(
-            $._arithmetic_expansion_start,
-            optional($._arithmetic_layout),
-            repeat(
-              seq(
-                choice(
-                  $._arithmetic_source_part,
-                  $._arithmetic_runtime_fragment,
-                ),
-                optional($._arithmetic_source_layout),
-              ),
+        closedArithmeticExpansion(
+          $,
+          $._arithmetic_dynamic_expansion_start,
+          $.arithmetic_dynamic_expression,
+        ),
+        seq(
+          $._arithmetic_incomplete_expansion_start,
+          optional($._arithmetic_layout),
+          repeat(
+            seq(
+              choice($._arithmetic_source_part, $._arithmetic_runtime_fragment),
+              optional($._arithmetic_source_layout),
             ),
-            $._input_end_recovery,
           ),
+          choice($._input_end_recovery, hereDocumentBoundaryRecovery($)),
         ),
       ),
 
     arithmetic_dynamic_expression: ($) =>
-      prec.dynamic(
-        -1,
-        seq(
-          repeat(
-            seq(
-              $._arithmetic_source_part,
-              optional($._arithmetic_source_layout),
-            ),
-          ),
-          field("runtime_fragment", $._arithmetic_runtime_fragment),
-          repeat(
-            seq(
-              optional($._arithmetic_source_layout),
-              choice($._arithmetic_source_part, $._arithmetic_runtime_fragment),
-            ),
+      seq(
+        repeat(
+          seq($._arithmetic_source_part, optional($._arithmetic_source_layout)),
+        ),
+        field("runtime_fragment", $._arithmetic_runtime_fragment),
+        repeat(
+          seq(
+            optional($._arithmetic_source_layout),
+            choice($._arithmetic_source_part, $._arithmetic_runtime_fragment),
           ),
         ),
       ),

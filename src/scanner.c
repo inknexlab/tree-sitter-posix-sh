@@ -67,6 +67,8 @@ enum TokenType {
   ARITHMETIC_OPERAND_BOUNDARY,
   ARITHMETIC_CLOSING_BOUNDARY,
   ARITHMETIC_LEFT_PARENTHESIS,
+  ARITHMETIC_DYNAMIC_LEFT_PARENTHESIS,
+  ARITHMETIC_INCOMPLETE_LEFT_PARENTHESIS,
   PATTERN_SPECIAL_LEFT_BRACKET,
   LITERAL_HASH,
   COMMENT_BOUNDARY,
@@ -133,7 +135,7 @@ _Static_assert(
   WORD_SEPARATOR_LINE_CONTINUATION == BOUNDARY_LINE_CONTINUATION + 1,
   "word-separator continuation must follow the boundary continuation"
 );
-_Static_assert(TOKEN_COUNT <= 108, "external token count exceeds the contract");
+_Static_assert(TOKEN_COUNT <= 110, "external token count exceeds the contract");
 
 enum ArithmeticOperatorCategory {
   ARITHMETIC_OPERATOR_CATEGORY_ASSIGNMENT,
@@ -3948,7 +3950,12 @@ static bool is_arithmetic_operand_start(int32_t character) {
  * substitution once that parse is determined impossible, and remains an
  * incomplete arithmetic expansion when the input ends before the
  * determination. This scan settles that choice at the second left
- * parenthesis, so the parser only ever pursues one interpretation. Nested
+ * parenthesis and additionally distinguishes the three arithmetic readings —
+ * a structured expression, a flat run around runtime fragments, and an
+ * incomplete expansion — so the parser only ever pursues one interpretation.
+ * Racing those readings instead would let an edited tree keep a flat-reading
+ * subtree that an incremental reparse of the restored source reuses, losing
+ * the structured reading that a parse from scratch produces. Nested
  * expansions are skipped structurally rather than parsed in full, as POSIX
  * permits for this determination, so a nested body that changes token
  * boundaries (for example an unbalanced parenthesis in a case pattern or
@@ -4836,7 +4843,8 @@ static size_t structured_parse_expression(
 
 static bool scan_arithmetic_left_parenthesis(
   const struct Scanner *scanner,
-  TSLexer *lexer
+  TSLexer *lexer,
+  const bool *valid_symbols
 ) {
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
@@ -4846,22 +4854,27 @@ static bool scan_arithmetic_left_parenthesis(
   enum ArithmeticValidation result =
     validate_arithmetic_content(scanner, lexer, &tokens, &has_expansion);
 
-  bool is_arithmetic = result == ARITHMETIC_VALIDATION_INCOMPLETE;
-  if (result == ARITHMETIC_VALIDATION_VALID) {
+  enum TokenType symbol = TOKEN_COUNT;
+  if (result == ARITHMETIC_VALIDATION_INCOMPLETE) {
+    symbol = ARITHMETIC_INCOMPLETE_LEFT_PARENTHESIS;
+  } else if (result == ARITHMETIC_VALIDATION_VALID) {
     struct StructuredValidation validation = {
       .tokens = tokens.data,
       .count = tokens.length,
     };
-    is_arithmetic = has_expansion ||
-      structured_parse_expression(&validation, 0, 0) == tokens.length;
+    if (structured_parse_expression(&validation, 0, 0) == tokens.length) {
+      symbol = ARITHMETIC_LEFT_PARENTHESIS;
+    } else if (has_expansion) {
+      symbol = ARITHMETIC_DYNAMIC_LEFT_PARENTHESIS;
+    }
   }
 
   ts_free(tokens.data);
-  if (!is_arithmetic) {
+  if (symbol == TOKEN_COUNT || !valid_symbols[symbol]) {
     return false;
   }
 
-  lexer->result_symbol = ARITHMETIC_LEFT_PARENTHESIS;
+  lexer->result_symbol = (TSSymbol)symbol;
   return true;
 }
 
@@ -6130,8 +6143,13 @@ bool tree_sitter_posix_sh_external_scanner_scan(
     return scan_here_document_operator_commit(scanner, lexer, valid_symbols);
   }
 
-  if (valid_symbols[ARITHMETIC_LEFT_PARENTHESIS] && lexer->lookahead == '(') {
-    return scan_arithmetic_left_parenthesis(scanner, lexer);
+  if (
+    (valid_symbols[ARITHMETIC_LEFT_PARENTHESIS] ||
+      valid_symbols[ARITHMETIC_DYNAMIC_LEFT_PARENTHESIS] ||
+      valid_symbols[ARITHMETIC_INCOMPLETE_LEFT_PARENTHESIS]) &&
+    lexer->lookahead == '('
+  ) {
+    return scan_arithmetic_left_parenthesis(scanner, lexer, valid_symbols);
   }
 
   bool arithmetic_boundary_is_valid =

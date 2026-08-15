@@ -2357,6 +2357,21 @@ test("word, parameter, and arithmetic categories survive edits", () => {
 });
 
 test("arithmetic grouping, lvalues, and unary operators remain stable", () => {
+  const backquoteBroken = writeSource(
+    "arithmetic-backquote-broken",
+    lines(": $((+x `+ y))"),
+  );
+  const backquoteRestored = writeSource(
+    "arithmetic-backquote-restored",
+    lines(": $((+x + y))"),
+  );
+  assertIncrementalEqualsFresh(
+    backquoteBroken,
+    backquoteRestored,
+    "structured-reading-survives-backquote-undo",
+    "8 1",
+  );
+
   const parenthesizedInitial = writeSource(
     "arithmetic-parenthesized-initial",
     lines(': "$((a + b))"'),
