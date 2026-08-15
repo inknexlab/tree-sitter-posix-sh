@@ -121,6 +121,7 @@ enum TokenType {
   WORD_TILDE_END,
   ASSIGNMENT_TILDE_END,
   NAME_EQUALS_BEGIN,
+  OPERATOR_LINE_CONTINUATION,
   TOKEN_COUNT,
 };
 
@@ -132,7 +133,7 @@ _Static_assert(
   WORD_SEPARATOR_LINE_CONTINUATION == BOUNDARY_LINE_CONTINUATION + 1,
   "word-separator continuation must follow the boundary continuation"
 );
-_Static_assert(TOKEN_COUNT <= 107, "external token count exceeds the contract");
+_Static_assert(TOKEN_COUNT <= 108, "external token count exceeds the contract");
 
 enum ArithmeticOperatorCategory {
   ARITHMETIC_OPERATOR_CATEGORY_ASSIGNMENT,
@@ -3631,13 +3632,19 @@ static bool finish_boundary_line_continuation(
     bool marker_is_valid =
       boundary_line_continuation_marker_is_valid(valid_symbols);
     if (
-      !marker_is_valid ||
-      (at_boundary &&
+      (!marker_is_valid && !valid_symbols[OPERATOR_LINE_CONTINUATION]) ||
+      (marker_is_valid &&
+        at_boundary &&
         classify_shell_boundary(scanner, lexer, valid_symbols, crossed_blank))
     ) {
       lexer->result_symbol = BOUNDARY_LINE_CONTINUATION;
       return true;
     }
+  }
+
+  if (valid_symbols[OPERATOR_LINE_CONTINUATION]) {
+    lexer->result_symbol = OPERATOR_LINE_CONTINUATION;
+    return true;
   }
 
   if (!valid_symbols[LINE_CONTINUATION]) {
@@ -6064,6 +6071,10 @@ bool tree_sitter_posix_sh_external_scanner_scan(
     is_active_backquote_boundary(scanner, lexer->lookahead)
   ) {
     return scan_backquote_end(scanner, lexer);
+  }
+
+  if (lexer->lookahead == '\\' && valid_symbols[OPERATOR_LINE_CONTINUATION]) {
+    return scan_boundary_line_continuation(scanner, lexer, valid_symbols);
   }
 
   if (

@@ -1243,6 +1243,28 @@ static void assert_boundary_line_continuation_contract(void) {
     assert(continuation.lexer.lookahead == (index < 2 ? '\\' : 'x'));
   }
 
+  bool operator_symbols[TOKEN_COUNT] = {false};
+  operator_symbols[OPERATOR_LINE_CONTINUATION] = true;
+  operator_symbols[WORD_SEPARATOR_LINE_CONTINUATION] = true;
+  const int32_t indented_operator_input[] = {'\\', '\n', ' ', 'x'};
+  struct MockLexer operator_continuation;
+  init_mock_lexer(
+    &operator_continuation,
+    indented_operator_input,
+    sizeof(indented_operator_input) / sizeof(indented_operator_input[0])
+  );
+  assert(tree_sitter_posix_sh_external_scanner_scan(
+    scanner,
+    &operator_continuation.lexer,
+    operator_symbols
+  ));
+  assert(
+    operator_continuation.lexer.result_symbol == OPERATOR_LINE_CONTINUATION
+  );
+  assert(operator_continuation.mark == 2);
+  assert(operator_continuation.offset == 2);
+  assert(operator_continuation.lexer.lookahead == ' ');
+
   const int32_t wrong_follower_input[] = {'\\', 'x'};
   struct MockLexer wrong_follower;
   init_mock_lexer(
@@ -1369,6 +1391,7 @@ static void assert_boundary_line_continuation_contract(void) {
   ) {
     bool closed_symbols[TOKEN_COUNT] = {false};
     closed_symbols[LINE_CONTINUATION] = true;
+    closed_symbols[OPERATOR_LINE_CONTINUATION] = true;
     closed_symbols[BOUNDARY_LINE_CONTINUATION] = true;
     closed_symbols[closed_markers[index]] = true;
 
@@ -1399,7 +1422,7 @@ static void assert_boundary_line_continuation_contract(void) {
       &ordinary_follower.lexer,
       closed_symbols
     ));
-    assert(ordinary_follower.lexer.result_symbol == LINE_CONTINUATION);
+    assert(ordinary_follower.lexer.result_symbol == OPERATOR_LINE_CONTINUATION);
     assert(ordinary_follower.mark == 2);
   }
 

@@ -269,13 +269,14 @@ const arithmeticExpansionEnd = ($) =>
 const linebreakLayout = ($) =>
   seq(optional($.linebreak), optional($._horizontal_layout));
 
-const continuedLinebreakLayout = ($) =>
+const continuedLinebreakLayout = ($, continuation) =>
   choice(
     prec.right(
       2,
       seq(
         optional($._blank),
-        repeat1(alias($._boundary_line_continuation, $.line_continuation)),
+        repeat1(alias(continuation, $.line_continuation)),
+        optional($._horizontal_layout),
         optional(seq($.linebreak, optional($._horizontal_layout))),
       ),
     ),
@@ -285,6 +286,12 @@ const continuedLinebreakLayout = ($) =>
       optional(seq($.linebreak, optional($._horizontal_layout))),
     ),
   );
+
+const operatorContinuedLinebreakLayout = ($) =>
+  continuedLinebreakLayout($, $._operator_line_continuation);
+
+const boundaryContinuedLinebreakLayout = ($) =>
+  continuedLinebreakLayout($, $._boundary_line_continuation);
 
 const reservedWordLinebreak = ($) =>
   choice(seq($.linebreak, optional($._horizontal_layout)), $._word_separator);
@@ -1101,6 +1108,7 @@ module.exports = grammar({
     $._word_tilde_end,
     $._assignment_tilde_end,
     $._name_equals_begin,
+    $._operator_line_continuation,
   ],
 
   extras: ($) => [$._here_document_content_line_start],
@@ -1368,7 +1376,7 @@ module.exports = grammar({
           seq(
             commandBoundaryLayout($),
             field("operator", choice($.and_if, $.or_if)),
-            continuedLinebreakLayout($),
+            operatorContinuedLinebreakLayout($),
             field(
               "pipeline",
               choice($.pipeline, alias($._recovering_pipeline, $.pipeline)),
@@ -1405,7 +1413,7 @@ module.exports = grammar({
           seq(
             commandBoundaryLayout($),
             "|",
-            continuedLinebreakLayout($),
+            operatorContinuedLinebreakLayout($),
             field(
               "command",
               choice($.command, alias($._recovering_command, $.command)),
@@ -1656,7 +1664,7 @@ module.exports = grammar({
           field("pipeline", $.pipeline),
           commandBoundaryLayout($),
           field("operator", choice($.and_if, $.or_if)),
-          continuedLinebreakLayout($),
+          boundaryContinuedLinebreakLayout($),
         ),
       ),
 
@@ -1700,7 +1708,7 @@ module.exports = grammar({
           field("command", $.command),
           commandBoundaryLayout($),
           "|",
-          continuedLinebreakLayout($),
+          boundaryContinuedLinebreakLayout($),
         ),
       ),
 

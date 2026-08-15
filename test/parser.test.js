@@ -2884,28 +2884,41 @@ test("command separators and continuation boundaries remain stable", () => {
     "5 6",
   );
 
-  const pipeLinebreakInitial = writeSource(
-    "pipe-linebreak-initial",
-    lines("first|next"),
+  const closedAndOrContinuationInitial = writeSource(
+    "closed-and-or-continuation-initial",
+    lines("{ a && b; }"),
   );
-  const pipeLinebreakFinal = writeSource(
-    "pipe-linebreak-final",
-    lines("first| \\", "next"),
+  const closedAndOrContinuationFinal = writeSource(
+    "closed-and-or-continuation-final",
+    lines("{ a && \\", "b; }"),
   );
-  const pipeLinebreakOutput = parseValidCst(pipeLinebreakFinal);
-  assertCstRange(pipeLinebreakOutput, "0:7-1:0", "line_continuation");
-  assertNotContains(pipeLinebreakOutput, "ERROR");
+  const closedAndOrLogicalOutput = parseValidCst(
+    closedAndOrContinuationInitial,
+  );
+  const closedAndOrPhysicalOutput = parseValidCst(closedAndOrContinuationFinal);
+  assertSameLogicalProjection(
+    "closed AND-OR continuation",
+    closedAndOrLogicalOutput,
+    closedAndOrPhysicalOutput,
+  );
+  assertCstRange(closedAndOrPhysicalOutput, "0:0-1:4", "brace_group");
+  assertCstRange(closedAndOrPhysicalOutput, "0:4-0:6", "operator: and_if");
+  assertCstRange(closedAndOrPhysicalOutput, "0:7-1:0", "line_continuation");
+  assertOccurrenceCount(closedAndOrPhysicalOutput, "line_continuation", 1);
+  for (const recovery of ["ERROR", "MISSING", "_recovery"]) {
+    assertNotContains(closedAndOrPhysicalOutput, recovery);
+  }
   assertIncrementalEqualsFresh(
-    pipeLinebreakInitial,
-    pipeLinebreakFinal,
-    "insert-pipe-linebreak-continuation",
-    "6 0  \\\n",
+    closedAndOrContinuationInitial,
+    closedAndOrContinuationFinal,
+    "insert-closed-and-or-continuation",
+    "7 0 \\\n",
   );
   assertIncrementalEqualsFresh(
-    pipeLinebreakFinal,
-    pipeLinebreakInitial,
-    "delete-pipe-linebreak-continuation",
-    "6 3",
+    closedAndOrContinuationFinal,
+    closedAndOrContinuationInitial,
+    "delete-closed-and-or-continuation",
+    "7 2",
   );
 
   const compoundLayoutInitial = writeSource(
