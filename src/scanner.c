@@ -2478,10 +2478,6 @@ static bool scan_reserved_character(
   return true;
 }
 
-static bool arithmetic_operand_boundary_is_valid(const bool *valid_symbols);
-
-static bool arithmetic_layout_reaches_operand_start(TSLexer *lexer);
-
 static bool classify_reserved_word(
   const char *word,
   const bool *valid_symbols,
@@ -2620,7 +2616,7 @@ static bool scan_lowercase_dispatch(
   return false;
 }
 
-static bool scan_name_equals_begin_or_boundary(
+static bool scan_name_equals_begin_or_reserved_word(
   const struct Scanner *scanner,
   TSLexer *lexer,
   const bool *valid_symbols
@@ -2655,18 +2651,6 @@ static bool scan_name_equals_begin_or_boundary(
 
   if (lexer->lookahead == '=') {
     lexer->result_symbol = NAME_EQUALS_BEGIN;
-    return true;
-  }
-
-  if (arithmetic_operand_boundary_is_valid(valid_symbols)) {
-    if (arithmetic_layout_reaches_operand_start(lexer)) {
-      return false;
-    }
-    lexer->result_symbol = valid_symbols[ARITHMETIC_PLUS_OPERAND_BOUNDARY]
-      ? ARITHMETIC_PLUS_OPERAND_BOUNDARY
-      : (valid_symbols[ARITHMETIC_MINUS_OPERAND_BOUNDARY]
-            ? ARITHMETIC_MINUS_OPERAND_BOUNDARY
-            : ARITHMETIC_OPERAND_BOUNDARY);
     return true;
   }
 
@@ -3532,36 +3516,6 @@ classify_arithmetic_operator(int32_t first, int32_t second, int32_t third);
 static bool is_arithmetic_operator_start(int32_t character);
 static bool is_arithmetic_operand_start(int32_t character);
 
-static bool classify_arithmetic_operand(
-  const bool *valid_symbols,
-  int32_t character,
-  bool crossed_layout,
-  enum TokenType plus_token,
-  enum TokenType minus_token,
-  enum TokenType generic_token,
-  TSSymbol *symbol
-) {
-  if (!is_arithmetic_operand_start(character)) {
-    return false;
-  }
-
-  if (valid_symbols[plus_token] && (crossed_layout || character != '+')) {
-    *symbol = (TSSymbol)plus_token;
-    return true;
-  }
-
-  if (valid_symbols[minus_token] && (crossed_layout || character != '-')) {
-    *symbol = (TSSymbol)minus_token;
-    return true;
-  }
-
-  if (valid_symbols[generic_token]) {
-    *symbol = (TSSymbol)generic_token;
-    return true;
-  }
-
-  return false;
-}
 static bool arithmetic_operand_boundary_is_valid(const bool *valid_symbols) {
   return (
     valid_symbols[ARITHMETIC_PLUS_OPERAND_BOUNDARY] ||
@@ -3775,66 +3729,7 @@ static bool is_arithmetic_operator_start(int32_t character) {
   }
 }
 
-static bool is_arithmetic_juxtaposed_operand_start(int32_t character) {
-  return (
-    is_name_character(character) ||
-    character ==
-    '$' ||
-    character ==
-    '`' ||
-    character == '('
-  );
-}
-
-/*
- * Structured POSIX arithmetic never places two operands side by side, so an
- * operand run that is followed, across arithmetic layout, by another operand
- * start can only belong to the flat runtime interpretation. Emitting an
- * operand boundary there would remove the one interpretation that can hold
- * the source.
- */
-static bool arithmetic_layout_reaches_operand_start(TSLexer *lexer) {
-  while (true) {
-    if (is_horizontal_blank(lexer->lookahead) || lexer->lookahead == '\n') {
-      lexer->advance(lexer, false);
-      continue;
-    }
-    if (lexer->lookahead == '\\') {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != '\n') {
-        return false;
-      }
-      lexer->advance(lexer, false);
-      continue;
-    }
-    break;
-  }
-  return is_arithmetic_juxtaposed_operand_start(lexer->lookahead);
-}
-
-static bool arithmetic_operand_run_is_juxtaposed(TSLexer *lexer) {
-  if (lexer->lookahead == '(') {
-    size_t depth = 0;
-    do {
-      if (lexer->lookahead == '(') {
-        depth += 1;
-      } else if (lexer->lookahead == ')') {
-        depth -= 1;
-      }
-      lexer->advance(lexer, false);
-      if (depth > 0 && lexer_at_eof(lexer)) {
-        return false;
-      }
-    } while (depth > 0);
-  } else {
-    while (is_name_character(lexer->lookahead)) {
-      lexer->advance(lexer, false);
-    }
-  }
-  return arithmetic_layout_reaches_operand_start(lexer);
-}
-
-static bool scan_arithmetic_layout(TSLexer *lexer, bool *crossed_layout) {
+static bool scan_arithmetic_layout(TSLexer *lexer) {
   while (true) {
     while (
       lexer->lookahead ==
@@ -3843,9 +3738,6 @@ static bool scan_arithmetic_layout(TSLexer *lexer, bool *crossed_layout) {
       '\t' ||
       lexer->lookahead == '\n'
     ) {
-      if (crossed_layout != NULL) {
-        *crossed_layout = true;
-      }
       lexer->advance(lexer, false);
     }
 
@@ -3864,8 +3756,7 @@ static bool scan_arithmetic_layout(TSLexer *lexer, bool *crossed_layout) {
 static bool
 scan_arithmetic_boundary(TSLexer *lexer, const bool *valid_symbols) {
   lexer->mark_end(lexer);
-  bool crossed_layout = false;
-  if (!scan_arithmetic_layout(lexer, &crossed_layout)) {
+  if (!scan_arithmetic_layout(lexer)) {
     return false;
   }
 
@@ -3874,25 +3765,15 @@ scan_arithmetic_boundary(TSLexer *lexer, const bool *valid_symbols) {
     return true;
   }
 
-  TSSymbol symbol;
   if (
-    classify_arithmetic_operand(
-      valid_symbols,
-      lexer->lookahead,
-      crossed_layout,
-      ARITHMETIC_PLUS_OPERAND_BOUNDARY,
-      ARITHMETIC_MINUS_OPERAND_BOUNDARY,
-      ARITHMETIC_OPERAND_BOUNDARY,
-      &symbol
-    )
+    arithmetic_operand_boundary_is_valid(valid_symbols) &&
+    is_arithmetic_operand_start(lexer->lookahead)
   ) {
-    if (
-      (is_name_character(lexer->lookahead) || lexer->lookahead == '(') &&
-      arithmetic_operand_run_is_juxtaposed(lexer)
-    ) {
-      return false;
-    }
-    lexer->result_symbol = symbol;
+    lexer->result_symbol = valid_symbols[ARITHMETIC_PLUS_OPERAND_BOUNDARY]
+      ? ARITHMETIC_PLUS_OPERAND_BOUNDARY
+      : (valid_symbols[ARITHMETIC_MINUS_OPERAND_BOUNDARY]
+            ? ARITHMETIC_MINUS_OPERAND_BOUNDARY
+            : ARITHMETIC_OPERAND_BOUNDARY);
     return true;
   }
 
@@ -5438,6 +5319,17 @@ static bool scan_active_here_document(
       lexer->result_symbol = HERE_DOCUMENT_BOUNDARY;
       return true;
     }
+
+    /*
+     * The next line does not end the document, so the newline belongs to the
+     * construct that is still open inside the body, such as arithmetic
+     * layout, and the marked range already covers exactly that newline.
+     */
+    if (valid_symbols[NEWLINE]) {
+      scanner->at_here_document_line_start = true;
+      lexer->result_symbol = NEWLINE;
+      return true;
+    }
     return false;
   }
 
@@ -5995,7 +5887,11 @@ bool tree_sitter_posix_sh_external_scanner_scan(
     valid_symbols[NAME_EQUALS_BEGIN] &&
     is_name_start_character(lexer->lookahead)
   ) {
-    return scan_name_equals_begin_or_boundary(scanner, lexer, valid_symbols);
+    return scan_name_equals_begin_or_reserved_word(
+      scanner,
+      lexer,
+      valid_symbols
+    );
   }
 
   if (

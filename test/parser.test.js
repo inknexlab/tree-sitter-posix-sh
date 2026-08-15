@@ -2637,6 +2637,60 @@ test("arithmetic grouping, lvalues, and unary operators remain stable", () => {
   );
 });
 
+test("arithmetic raw newlines stay layout in every reading", () => {
+  const structuredNewline = writeSource(
+    "arithmetic-structured-newline",
+    lines(': "$((1 +', '2))" "$((1', '))"'),
+  );
+  const structuredOutput = parseValidTree(structuredNewline);
+  assertContains(
+    structuredOutput,
+    "expression: (arithmetic_binary_expression [0, 6] - [1, 1]",
+  );
+  assertContains(
+    structuredOutput,
+    "expression: (arithmetic_number [1, 9] - [1, 10])",
+  );
+
+  const dynamicSpace = writeSource(
+    "arithmetic-dynamic-space",
+    lines(': "$(($x y))"'),
+  );
+  const dynamicNewline = writeSource(
+    "arithmetic-dynamic-newline",
+    lines(': "$(($x', 'y))"'),
+  );
+  const [, dynamicOutput] = assertIncrementalEqualsFresh(
+    dynamicSpace,
+    dynamicNewline,
+    "arithmetic-dynamic-space-to-newline",
+    "8 1 \n",
+  );
+  assertCstRange(dynamicOutput, "0:6-1:1", "arithmetic_dynamic_expression");
+
+  const incompleteAtEof = writeSource(
+    "arithmetic-incomplete-newline-eof",
+    lines("echo $((1 +"),
+  );
+  const incompleteOutput = parseValidTree(incompleteAtEof);
+  assertContains(incompleteOutput, "(arithmetic_expansion [0, 5] - [1, 0]");
+  assertContains(incompleteOutput, "(arithmetic_operator [0, 10] - [0, 11])");
+
+  const incompleteInBackquote = writeSource(
+    "arithmetic-incomplete-newline-backquote",
+    lines("echo `echo $((1 +", "`"),
+  );
+  const backquoteArithmeticOutput = parseValidTree(incompleteInBackquote);
+  assertContains(
+    backquoteArithmeticOutput,
+    "(backquote_substitution [0, 5] - [1, 1]",
+  );
+  assertContains(
+    backquoteArithmeticOutput,
+    "(arithmetic_expansion [0, 11] - [1, 0]",
+  );
+});
+
 test("tilde, assignment, and compound-tail classifications remain stable", () => {
   const tildePercentInitial = writeSource(
     "tilde-percent-initial",

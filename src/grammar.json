@@ -7001,24 +7001,8 @@
       }
     },
     "missing_here_end": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "_missing_here_document_delimiter"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_missing_here_end_sentinel"
-        }
-      ]
-    },
-    "_missing_here_end_sentinel": {
-      "type": "IMMEDIATE_TOKEN",
-      "content": {
-        "type": "STRING",
-        "value": "\u0000"
-      }
+      "type": "SYMBOL",
+      "name": "_missing_here_document_delimiter"
     },
     "here_document_sequence": {
       "type": "SEQ",
@@ -14428,7 +14412,7 @@
                           "members": [
                             {
                               "type": "SYMBOL",
-                              "name": "_arithmetic_closing_layout"
+                              "name": "_arithmetic_layout"
                             },
                             {
                               "type": "BLANK"
@@ -14513,23 +14497,14 @@
                       }
                     },
                     {
-                      "type": "SEQ",
+                      "type": "CHOICE",
                       "members": [
                         {
                           "type": "SYMBOL",
-                          "name": "_arithmetic_closing_boundary"
+                          "name": "_arithmetic_layout"
                         },
                         {
-                          "type": "CHOICE",
-                          "members": [
-                            {
-                              "type": "SYMBOL",
-                              "name": "_arithmetic_closing_layout"
-                            },
-                            {
-                              "type": "BLANK"
-                            }
-                          ]
+                          "type": "BLANK"
                         }
                       ]
                     },
@@ -14617,7 +14592,7 @@
                     "members": [
                       {
                         "type": "SYMBOL",
-                        "name": "_arithmetic_source_layout"
+                        "name": "_arithmetic_layout"
                       },
                       {
                         "type": "BLANK"
@@ -14666,7 +14641,7 @@
                 "members": [
                   {
                     "type": "SYMBOL",
-                    "name": "_arithmetic_source_layout"
+                    "name": "_arithmetic_layout"
                   },
                   {
                     "type": "BLANK"
@@ -14694,7 +14669,7 @@
                 "members": [
                   {
                     "type": "SYMBOL",
-                    "name": "_arithmetic_source_layout"
+                    "name": "_arithmetic_layout"
                   },
                   {
                     "type": "BLANK"
@@ -14873,7 +14848,7 @@
                 "members": [
                   {
                     "type": "SYMBOL",
-                    "name": "_arithmetic_source_layout"
+                    "name": "_arithmetic_layout"
                   },
                   {
                     "type": "BLANK"
@@ -14917,23 +14892,14 @@
           }
         },
         {
-          "type": "SEQ",
+          "type": "CHOICE",
           "members": [
             {
               "type": "SYMBOL",
-              "name": "_arithmetic_closing_boundary"
+              "name": "_arithmetic_layout"
             },
             {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "_arithmetic_closing_layout"
-                },
-                {
-                  "type": "BLANK"
-                }
-              ]
+              "type": "BLANK"
             }
           ]
         },
@@ -15110,7 +15076,7 @@
               "members": [
                 {
                   "type": "SYMBOL",
-                  "name": "_arithmetic_closing_layout"
+                  "name": "_arithmetic_layout"
                 },
                 {
                   "type": "BLANK"
@@ -16166,7 +16132,7 @@
               "members": [
                 {
                   "type": "SYMBOL",
-                  "name": "_arithmetic_closing_layout"
+                  "name": "_arithmetic_layout"
                 },
                 {
                   "type": "BLANK"
@@ -16882,97 +16848,6 @@
         {
           "type": "STRING",
           "value": "%"
-        }
-      ]
-    },
-    "_arithmetic_closing_layout": {
-      "type": "SYMBOL",
-      "name": "_arithmetic_layout"
-    },
-    "_arithmetic_operator_boundary": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_assignment_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_question_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_colon_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_logical_or_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_logical_and_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_bitwise_or_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_bitwise_xor_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_bitwise_and_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_equality_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_relational_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_shift_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_additive_operator_boundary"
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_multiplicative_operator_boundary"
-        }
-      ]
-    },
-    "_arithmetic_source_layout": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "SYMBOL",
-              "name": "_arithmetic_operator_boundary"
-            },
-            {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "_arithmetic_layout"
-                },
-                {
-                  "type": "BLANK"
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "type": "SYMBOL",
-          "name": "_arithmetic_layout"
         }
       ]
     },
@@ -17752,6 +17627,9 @@
     [
       "_parenthesized_arithmetic_lvalue",
       "_arithmetic_primary_expression"
+    ],
+    [
+      "arithmetic_dynamic_expression"
     ]
   ],
   "precedences": [],

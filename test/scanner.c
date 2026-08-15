@@ -3195,12 +3195,8 @@ static void assert_arithmetic_boundary_contract(void) {
   ));
   assert(operand.lexer.result_symbol == ARITHMETIC_OPERAND_BOUNDARY);
   assert(operand.mark == 0);
-  /*
-   * The scan reads past the operand run to rule out an adjacent runtime
-   * fragment; the boundary itself stays zero-width at the marked start.
-   */
-  assert(operand.offset == 5);
-  assert(operand.lexer.lookahead == 0);
+  assert(operand.offset == 4);
+  assert(operand.lexer.lookahead == 'a');
 
   const int32_t operator_input[] = {'\\', '\n', '\\', '\n', '+'};
   struct MockLexer operator;
@@ -3723,20 +3719,6 @@ static void assert_name_equals_begin_contract(void) {
   const int32_t operand_input[] = {'n', 'a', 'm', 'e', '+'};
   memset(valid_symbols, 0, sizeof(valid_symbols));
   valid_symbols[NAME_EQUALS_BEGIN] = true;
-  valid_symbols[ARITHMETIC_OPERAND_BOUNDARY] = true;
-  assert_scan_result(
-    scanner,
-    valid_symbols,
-    operand_input,
-    sizeof(operand_input) / sizeof(operand_input[0]),
-    true,
-    ARITHMETIC_OPERAND_BOUNDARY,
-    0,
-    4,
-    '+'
-  );
-
-  valid_symbols[ARITHMETIC_OPERAND_BOUNDARY] = false;
   assert_scan_result(
     scanner,
     valid_symbols,

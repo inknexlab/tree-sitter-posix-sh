@@ -228,11 +228,8 @@ const arithmeticBinaryOperatorRules = () => {
   return rules;
 };
 
-const arithmeticLayoutUnit = ($) =>
-  choice($.line_continuation, $._blank, $._newline);
-
 const arithmeticClosingLayout = ($) =>
-  seq($._arithmetic_closing_boundary, optional($._arithmetic_closing_layout));
+  seq($._arithmetic_closing_boundary, optional($._arithmetic_layout));
 
 const arithmeticLvalue = ($) =>
   choice(
@@ -265,16 +262,16 @@ const arithmeticExpansionEnd = ($) =>
 const arithmeticExpansionStart = ($, marker) =>
   seq($._command_or_arithmetic_substitution_start, alias(marker, "("));
 
-const closedArithmeticExpansion = ($, start, expression) =>
+// The structured reading closes through the scanner's closing boundary, which
+// settles the reduce-versus-shift decision across layout. The flat readings
+// have no such decision: layout units are consumed directly and the closer is
+// recognized at its own character.
+const closedArithmeticExpansion = ($, start, expression, closing) =>
   seq(
     start,
     optional($._arithmetic_layout),
     choice(
-      seq(
-        field("expression", expression),
-        arithmeticClosingLayout($),
-        arithmeticExpansionEnd($),
-      ),
+      seq(field("expression", expression), closing, arithmeticExpansionEnd($)),
       hereDocumentBoundaryRecovery($),
     ),
   );
@@ -895,6 +892,18 @@ const caseTerminatorTail = ($) =>
     ),
   );
 
+// A redirection continues a simple command directly after the previous
+// element, after line continuations alone, or after a word separator that
+// lets it carry its own descriptor.
+const commandRedirectContinuations = ($) => [
+  field("redirect", alias($._io_redirect_without_descriptor, $.io_redirect)),
+  seq(
+    repeat1($.line_continuation),
+    field("redirect", alias($._io_redirect_without_descriptor, $.io_redirect)),
+  ),
+  seq($._word_separator, field("redirect", $.io_redirect)),
+];
+
 const redirectList = ($) =>
   seq(
     field("redirect", $.io_redirect),
@@ -1371,6 +1380,7 @@ module.exports = grammar({
     [$.case_item],
     [$._special_parameter_hash, $.parameter_length_operator],
     [$._parenthesized_arithmetic_lvalue, $._arithmetic_primary_expression],
+    [$.arithmetic_dynamic_expression],
   ],
 
   rules: {
@@ -2159,18 +2169,7 @@ module.exports = grammar({
         repeat(
           choice(
             seq($._word_separator, field("assignment", $.assignment_word)),
-            field(
-              "redirect",
-              alias($._io_redirect_without_descriptor, $.io_redirect),
-            ),
-            seq(
-              repeat1($.line_continuation),
-              field(
-                "redirect",
-                alias($._io_redirect_without_descriptor, $.io_redirect),
-              ),
-            ),
-            seq($._word_separator, field("redirect", $.io_redirect)),
+            ...commandRedirectContinuations($),
           ),
         ),
       ),
@@ -2183,18 +2182,7 @@ module.exports = grammar({
       repeat1(
         choice(
           seq($._word_separator, field("word", $.word)),
-          field(
-            "redirect",
-            alias($._io_redirect_without_descriptor, $.io_redirect),
-          ),
-          seq(
-            repeat1($.line_continuation),
-            field(
-              "redirect",
-              alias($._io_redirect_without_descriptor, $.io_redirect),
-            ),
-          ),
-          seq($._word_separator, field("redirect", $.io_redirect)),
+          ...commandRedirectContinuations($),
         ),
       ),
 
@@ -2286,10 +2274,7 @@ module.exports = grammar({
         ),
       ),
 
-    missing_here_end: ($) =>
-      choice($._missing_here_document_delimiter, $._missing_here_end_sentinel),
-
-    _missing_here_end_sentinel: (_) => token.immediate("\0"),
+    missing_here_end: ($) => $._missing_here_document_delimiter,
 
     here_document_sequence: ($) =>
       seq(
@@ -3282,11 +3267,13 @@ module.exports = grammar({
           $,
           $._arithmetic_expansion_start,
           $._arithmetic_assignment_expression,
+          arithmeticClosingLayout($),
         ),
         closedArithmeticExpansion(
           $,
           $._arithmetic_dynamic_expansion_start,
           $.arithmetic_dynamic_expression,
+          optional($._arithmetic_layout),
         ),
         seq(
           $._arithmetic_incomplete_expansion_start,
@@ -3294,7 +3281,7 @@ module.exports = grammar({
           repeat(
             seq(
               choice($._arithmetic_source_part, $._arithmetic_runtime_fragment),
-              optional($._arithmetic_source_layout),
+              optional($._arithmetic_layout),
             ),
           ),
           choice($._input_end_recovery, hereDocumentBoundaryRecovery($)),
@@ -3303,13 +3290,11 @@ module.exports = grammar({
 
     arithmetic_dynamic_expression: ($) =>
       seq(
-        repeat(
-          seq($._arithmetic_source_part, optional($._arithmetic_source_layout)),
-        ),
+        repeat(seq($._arithmetic_source_part, optional($._arithmetic_layout))),
         field("runtime_fragment", $._arithmetic_runtime_fragment),
         repeat(
           seq(
-            optional($._arithmetic_source_layout),
+            optional($._arithmetic_layout),
             choice($._arithmetic_source_part, $._arithmetic_runtime_fragment),
           ),
         ),
@@ -3346,9 +3331,7 @@ module.exports = grammar({
       seq(
         "(",
         optional($._arithmetic_layout),
-        repeat(
-          seq($._arithmetic_source_part, optional($._arithmetic_source_layout)),
-        ),
+        repeat(seq($._arithmetic_source_part, optional($._arithmetic_layout))),
         ")",
       ),
 
@@ -3357,7 +3340,7 @@ module.exports = grammar({
         "(",
         optional($._arithmetic_layout),
         field("expression", $.arithmetic_dynamic_expression),
-        arithmeticClosingLayout($),
+        optional($._arithmetic_layout),
         ")",
       ),
 
@@ -3470,23 +3453,8 @@ module.exports = grammar({
 
     ...arithmeticBinaryOperatorRules(),
 
-    _arithmetic_closing_layout: ($) => $._arithmetic_layout,
-
-    _arithmetic_operator_boundary: ($) =>
-      choice(
-        $._arithmetic_assignment_operator_boundary,
-        $._arithmetic_question_operator_boundary,
-        $._arithmetic_colon_operator_boundary,
-        ...arithmeticBinaryLevelSymbols($, "operator_boundary"),
-      ),
-
-    _arithmetic_source_layout: ($) =>
-      choice(
-        seq($._arithmetic_operator_boundary, optional($._arithmetic_layout)),
-        $._arithmetic_layout,
-      ),
-
-    _arithmetic_layout: ($) => repeat1(arithmeticLayoutUnit($)),
+    _arithmetic_layout: ($) =>
+      repeat1(choice($.line_continuation, $._blank, $._newline)),
 
     _literal_token: (_) => token(prec(-1, LITERAL_TOKEN_PATTERN)),
 
