@@ -297,12 +297,6 @@ const patternBoundaryLayout = ($) =>
 const patternClosingLayout = ($) =>
   continuationBoundaryLayout($, $._pattern_end);
 
-const caseItemFollowingLayout = ($) =>
-  choice(
-    seq($.linebreak, optional($._horizontal_layout)),
-    $._horizontal_layout,
-  );
-
 const lineComment = ($, comment) =>
   seq(continuationBoundaryLayout($, $._comment_boundary), comment);
 
@@ -866,16 +860,7 @@ const commandRedirectContinuations = ($) => [
 const redirectList = ($) =>
   seq(
     field("redirect", $.io_redirect),
-    repeat(
-      choice(
-        field(
-          "redirect",
-          alias($._io_redirect_without_descriptor, $.io_redirect),
-        ),
-        seq($._redirect_separator, field("redirect", $.io_redirect)),
-        $.line_continuation,
-      ),
-    ),
+    repeat(choice(...commandRedirectContinuations($))),
   );
 
 const redirectableCompoundCommand = ($) =>
@@ -1903,7 +1888,7 @@ module.exports = grammar({
         ),
         seq($._case_item_end, optional($._horizontal_layout)),
         field("terminator", choice($.dsemi, $.semi_and)),
-        optional(caseItemFollowingLayout($)),
+        optional(reservedWordLinebreak($)),
       ),
 
     pattern_list: ($) =>

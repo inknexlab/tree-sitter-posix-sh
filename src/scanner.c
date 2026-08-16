@@ -1565,10 +1565,10 @@ scan_dollar_single_quote_escape(TSLexer *lexer, struct ByteBuffer *delimiter) {
       return control_escape_byte('\\', &value) && append_byte(delimiter, value);
     }
 
-    int32_t character = lexer->lookahead;
+    int32_t control_character = lexer->lookahead;
     lexer->advance(lexer, false);
     uint8_t value;
-    return control_escape_byte(character, &value) &&
+    return control_escape_byte(control_character, &value) &&
       append_byte(delimiter, value);
   }
 
@@ -2554,6 +2554,22 @@ static bool is_recovery_reserved_word(const char *word) {
   );
 }
 
+// POSIX case-statement termination ends the open case item at a real "esac"
+// even where the item body could still begin its first command, so the closer
+// reaches its formal owner instead of an in-body recovery reading.
+static bool classify_case_item_ns_end(
+  const char *word,
+  const bool *valid_symbols,
+  TSSymbol *symbol
+) {
+  if (!valid_symbols[CASE_ITEM_NS_BOUNDARY] || strcmp(word, "esac") != 0) {
+    return false;
+  }
+
+  *symbol = CASE_ITEM_NS_BOUNDARY;
+  return true;
+}
+
 static bool classify_lowercase_recovery(
   const char *word,
   const bool *valid_symbols,
@@ -2592,6 +2608,11 @@ static bool scan_lowercase_dispatch(
 
   TSSymbol symbol;
   if (classify_reserved_word(word, valid_symbols, &symbol)) {
+    lexer->result_symbol = symbol;
+    return true;
+  }
+
+  if (classify_case_item_ns_end(word, valid_symbols, &symbol)) {
     lexer->result_symbol = symbol;
     return true;
   }
@@ -2705,6 +2726,10 @@ static bool scan_name_equals_begin_or_reserved_word(
     lexer->result_symbol = symbol;
     return true;
   }
+  if (classify_case_item_ns_end(word, valid_symbols, &symbol)) {
+    lexer->result_symbol = symbol;
+    return true;
+  }
   if (
     valid_symbols[COMPOUND_LIST_BOUNDARY] && is_recovery_reserved_word(word)
   ) {
@@ -2728,12 +2753,7 @@ static bool scan_name_equals_begin_or_reserved_word(
 
 static bool scan_case_item_terminator(TSLexer *lexer);
 
-static bool scan_horizontal_blanks(TSLexer *lexer);
-
 static bool scan_horizontal_layout(TSLexer *lexer);
-
-static bool
-scan_horizontal_layout_with_blanks(TSLexer *lexer, bool *crossed_blank);
 
 static bool
 scan_compound_list_boundary(const struct Scanner *scanner, TSLexer *lexer) {
@@ -3123,28 +3143,18 @@ static bool scan_horizontal_blanks(TSLexer *lexer) {
   return found;
 }
 
-static bool
-scan_horizontal_layout_with_blanks(TSLexer *lexer, bool *crossed_blank) {
+// Skips horizontal blanks and line-continuation pairs. Returns false only
+// when a backslash is not part of a continuation pair.
+static bool scan_horizontal_layout(TSLexer *lexer) {
   while (true) {
-    bool found_blank = scan_horizontal_blanks(lexer);
-    if (found_blank && crossed_blank != NULL) {
-      *crossed_blank = true;
-    }
+    scan_horizontal_blanks(lexer);
     if (lexer->lookahead != '\\') {
       return true;
     }
-
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\n') {
+    if (!skip_line_continuations(lexer)) {
       return false;
     }
-
-    lexer->advance(lexer, false);
   }
-}
-
-static bool scan_horizontal_layout(TSLexer *lexer) {
-  return scan_horizontal_layout_with_blanks(lexer, NULL);
 }
 
 // The command-continuation markers settle which hierarchy level owns the
@@ -3180,20 +3190,6 @@ scan_command_continuation_operator(TSLexer *lexer, const bool *valid_symbols) {
 
   lexer->result_symbol = AND_OR_CONTINUATION;
   return true;
-}
-
-// Skips horizontal blanks and line-continuation pairs. Returns false only
-// when a backslash is not part of a continuation pair.
-static bool skip_blanks_and_continuations(TSLexer *lexer) {
-  while (true) {
-    scan_horizontal_blanks(lexer);
-    if (lexer->lookahead != '\\') {
-      return true;
-    }
-    if (!skip_line_continuations(lexer)) {
-      return false;
-    }
-  }
 }
 
 static bool
@@ -3384,8 +3380,6 @@ static bool scan_element_boundary(
       }
       return false;
     }
-    // A pair at the very start of the boundary is its own token; markers and
-    // separators classify from the position after it.
     if (pair_is_first && valid_symbols[LINE_CONTINUATION]) {
       lexer->advance(lexer, false);
       lexer->mark_end(lexer);
@@ -3404,29 +3398,21 @@ static bool scan_element_boundary(
       lexer->result_symbol = PATTERN_CONTINUATION;
       return true;
     }
-    lexer->advance(lexer, false);
-    if (lexer->lookahead == '|') {
-      if (!valid_symbols[AND_OR_CONTINUATION]) {
-        return false;
-      }
-      lexer->result_symbol = AND_OR_CONTINUATION;
-      return true;
-    }
-    if (!valid_symbols[PIPE_CONTINUATION]) {
-      return false;
-    }
-    lexer->result_symbol = PIPE_CONTINUATION;
-    return true;
+    return scan_command_continuation_operator(lexer, valid_symbols);
   }
 
   if (character == '&') {
     lexer->advance(lexer, false);
     if (lexer->lookahead == '&') {
-      if (!valid_symbols[AND_OR_CONTINUATION]) {
-        return false;
+      if (valid_symbols[AND_OR_CONTINUATION]) {
+        lexer->result_symbol = AND_OR_CONTINUATION;
+        return true;
       }
-      lexer->result_symbol = AND_OR_CONTINUATION;
-      return true;
+      if (valid_symbols[HEADER_RECOVERY_BOUNDARY]) {
+        lexer->result_symbol = HEADER_RECOVERY_BOUNDARY;
+        return true;
+      }
+      return false;
     }
     return scan_separator_operator_continuation(scanner, lexer, valid_symbols);
   }
@@ -3448,14 +3434,16 @@ static bool scan_element_boundary(
         lexer->result_symbol = SEPARATOR_RECOVERY;
         return true;
       }
+      if (valid_symbols[HEADER_RECOVERY_BOUNDARY]) {
+        lexer->result_symbol = HEADER_RECOVERY_BOUNDARY;
+        return true;
+      }
       return false;
     }
     return scan_separator_operator_continuation(scanner, lexer, valid_symbols);
   }
 
   if (character == '\n') {
-    // A blank run before the newline is its own token; the newline itself is
-    // classified on the next scan.
     bool blank_run_before_newline = crossed_layout && !crossed_pairs;
     if (
       (blank_run_before_newline || blank_mark_committed) &&
@@ -3607,6 +3595,7 @@ static bool classify_word_separator(
     redirect_ahead = character_count >=
       2 &&
       ends_with_right_brace &&
+      skip_line_continuations(lexer) &&
       (lexer->lookahead == '<' || lexer->lookahead == '>');
   }
 
@@ -3625,9 +3614,6 @@ static bool classify_word_separator(
   return false;
 }
 
-// The word-separator marker owns the blank run that separates the elements,
-// so reusable subtrees anchor on a non-empty first token.
-
 // After a consumed separator operator, decides whether the enclosing
 // sequence continues with another command. Where a list is open the operator
 // belongs to the list or to the complete_command terminator, and only the
@@ -3638,12 +3624,19 @@ static bool scan_separator_operator_continuation(
   TSLexer *lexer,
   const bool *valid_symbols
 ) {
-  if (!skip_blanks_and_continuations(lexer)) {
+  if (!scan_horizontal_layout(lexer)) {
     return false;
   }
 
   if (valid_symbols[LIST_CONTINUATION]) {
     int32_t character = lexer->lookahead;
+    // A lone separator operator can neither begin a command nor a recovery
+    // command, so the list ends and its terminator keeps its formal owner.
+    bool lone_separator_ahead = false;
+    if (character == ';') {
+      lexer->advance(lexer, false);
+      lone_separator_ahead = lexer->lookahead != ';' && lexer->lookahead != '&';
+    }
     // A closer belongs to the enclosing substitution where one is open;
     // elsewhere it begins a recovery command that continues the list.
     if (
@@ -3652,6 +3645,7 @@ static bool scan_separator_operator_continuation(
       '\n' &&
       character !=
       '#' &&
+      !lone_separator_ahead &&
       !(character == ')' && valid_symbols[COMMAND_SUBSTITUTION_CLOSE]) &&
       !(is_active_backquote_boundary(scanner, character) &&
         valid_symbols[BACKQUOTE_END])
@@ -3677,10 +3671,13 @@ static bool scan_separator_operator_continuation(
     return true;
   }
 
-  // A separator operator directly after a connecting operator marks the
-  // missing command position.
   if (valid_symbols[MISSING_COMMAND_RECOVERY_BOUNDARY]) {
     lexer->result_symbol = MISSING_COMMAND_RECOVERY_BOUNDARY;
+    return true;
+  }
+
+  if (valid_symbols[HEADER_RECOVERY_BOUNDARY]) {
+    lexer->result_symbol = HEADER_RECOVERY_BOUNDARY;
     return true;
   }
 
@@ -3722,7 +3719,7 @@ static bool finish_term_continuation(
   }
 
   while (true) {
-    if (!skip_blanks_and_continuations(lexer)) {
+    if (!scan_horizontal_layout(lexer)) {
       return false;
     }
     if (lexer->lookahead == '#') {

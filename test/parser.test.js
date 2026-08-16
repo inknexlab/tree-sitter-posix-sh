@@ -829,6 +829,87 @@ test("list recovery stops before raw command separators", () => {
   assertNotContains(nestedOutput, "ERROR");
 });
 
+test("case closers, IO locations, and keyword headers survive edits", () => {
+  const emptyNsItem = writeSource(
+    "case-esac-after-closed-pattern",
+    lines("case x in x) esac"),
+  );
+  const emptyNsItemOutput = parseValidCst(emptyNsItem);
+  assertCstRange(emptyNsItemOutput, "0:10-0:13", "item: case_item_ns");
+  assertCstRange(emptyNsItemOutput, "0:13-0:17", "esac_keyword");
+  assertNotContains(emptyNsItemOutput, "recovery");
+
+  const emptyNsItemBodyInitial = writeSource(
+    "case-ns-item-body-initial",
+    lines("case x in x) run", "esac"),
+  );
+  const emptyNsItemBodyFinal = writeSource(
+    "case-ns-item-body-final",
+    lines("case x in x)", "esac"),
+  );
+  parseIncrementalAndFresh(
+    emptyNsItemBodyInitial,
+    emptyNsItemBodyFinal,
+    "delete-ns-item-body",
+    "12 4",
+  );
+
+  const headerSeparatorInitial = writeSource(
+    "for-header-separator-initial",
+    lines("for x; do :; done", "after"),
+  );
+  const headerSeparatorFinal = writeSource(
+    "for-header-separator-final",
+    lines("for; do :; done", "after"),
+  );
+  parseIncrementalAndFresh(
+    headerSeparatorInitial,
+    headerSeparatorFinal,
+    "delete-for-name-before-separator",
+    "3 2",
+  );
+
+  const caseHeaderOutput = parseContainsAll(
+    writeSource("case-header-separator", lines("case; :")),
+    "case header before a separator",
+    "recovery: (compound_command_recovery [0, 4] - [0, 4])",
+    "separator: (separator_op [0, 4] - [0, 5])",
+  );
+  assertNotContains(caseHeaderOutput, "ERROR");
+
+  const loneSeparatorInitial = writeSource(
+    "lone-separator-initial",
+    lines("a; b"),
+  );
+  const loneSeparatorFinal = writeSource("lone-separator-final", lines("a; ;"));
+  for (const output of parseIncrementalAndFresh(
+    loneSeparatorInitial,
+    loneSeparatorFinal,
+    "replace-command-with-lone-separator",
+    "3 1 ;",
+  )) {
+    assertCstRange(output, "0:1-0:2", "terminator: separator_op");
+  }
+
+  const locationContinuationInitial = writeSource(
+    "io-location-continuation-initial",
+    lines("printf {x}\\", ">file", "after"),
+  );
+  const locationContinuationFinal = writeSource(
+    "io-location-continuation-final",
+    lines("printf {x}>file", "after"),
+  );
+  for (const output of parseIncrementalAndFresh(
+    locationContinuationInitial,
+    locationContinuationFinal,
+    "join-io-location-and-operator",
+    "10 2",
+  )) {
+    assertContains(output, "location: io_location");
+    assertNotContains(output, "ERROR");
+  }
+});
+
 test("formal right-parenthesis ownership survives boundary continuations", () => {
   const logical = writeSource(
     "formal-right-parenthesis-logical",
