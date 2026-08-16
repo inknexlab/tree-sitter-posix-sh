@@ -734,6 +734,51 @@ test("line-continuation and comment contracts", () => {
     "delete-comment-boundary-continuation",
     "9 2",
   );
+
+  // The newline ending a comment line records the run's continuation horizon,
+  // so an edit that turns the following closer into ordinary source
+  // invalidates the run instead of reusing its terminator shape.
+  const commentHorizonInitial = writeSource(
+    "comment-horizon-initial",
+    lines("while read line; do", '  echo "$line" # note', "done < file"),
+  );
+  const commentHorizonFinal = writeSource(
+    "comment-horizon-final",
+    lines("while read line; do", '  echo "$line" # note', "don& < file"),
+  );
+  assertIncrementalEqualsFresh(
+    commentHorizonInitial,
+    commentHorizonFinal,
+    "comment-line-horizon-closer-loss",
+    "45 1 &",
+  );
+  assertIncrementalEqualsFresh(
+    commentHorizonFinal,
+    commentHorizonInitial,
+    "comment-line-horizon-closer-return",
+    "45 1 e",
+  );
+
+  const trailingCommentInitial = writeSource(
+    "trailing-comment-initial",
+    "printf x\n",
+  );
+  const trailingCommentFinal = writeSource(
+    "trailing-comment-final",
+    "printf x\n# c",
+  );
+  assertIncrementalEqualsFresh(
+    trailingCommentInitial,
+    trailingCommentFinal,
+    "append-trailing-comment-at-input-end",
+    "9 0 # c",
+  );
+  assertIncrementalEqualsFresh(
+    trailingCommentFinal,
+    trailingCommentInitial,
+    "delete-trailing-comment-at-input-end",
+    "9 3",
+  );
 });
 
 test("list recovery stops before raw command separators", () => {
@@ -1939,6 +1984,29 @@ test("substitution, redirection, and token boundaries retain ownership", () => {
   ]) {
     assertCstRange(delimiterOutput, range, item);
   }
+
+  // Blanks after a substitution linebreak are interior layout of the body,
+  // both freshly and when an edit introduces or removes them.
+  const interiorBlankInitial = writeSource(
+    "substitution-interior-blank-initial",
+    lines("x=$(", "echo hi)"),
+  );
+  const interiorBlankFinal = writeSource(
+    "substitution-interior-blank-final",
+    lines("x=$(", " echo hi)"),
+  );
+  assertIncrementalEqualsFresh(
+    interiorBlankInitial,
+    interiorBlankFinal,
+    "substitution-interior-blank-insert",
+    "5 0  ",
+  );
+  assertIncrementalEqualsFresh(
+    interiorBlankFinal,
+    interiorBlankInitial,
+    "substitution-interior-blank-delete",
+    "5 1",
+  );
 
   const parameterDelimiterInitial = writeSource(
     "parameter-delimiter-initial",

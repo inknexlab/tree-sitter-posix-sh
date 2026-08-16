@@ -2148,6 +2148,9 @@ static void assert_header_separator_recovery_contract(void) {
     0
   );
 
+  // The continuation read runs regardless of which symbols are valid, so the
+  // recovery token records the same lookahead extent as any fresh state at
+  // the same position.
   const int32_t ampersand_input[] = {'&', ' ', 'b'};
   assert_scan_result(
     scanner,
@@ -2157,8 +2160,8 @@ static void assert_header_separator_recovery_contract(void) {
     true,
     HEADER_RECOVERY_BOUNDARY,
     0,
-    2,
-    'b'
+    3,
+    0
   );
 
   const int32_t terminator_input[] = {';', ';'};
@@ -2188,6 +2191,8 @@ static void assert_lone_separator_ends_the_list(void) {
   valid_symbols[LIST_CONTINUATION] = true;
   valid_symbols[TERMINATOR_AHEAD] = true;
 
+  // The term-continuation read past the command's first word keeps the
+  // token's lookahead extent a function of the source alone.
   const int32_t command_input[] = {';', ' ', 'b'};
   assert_scan_result(
     scanner,
@@ -2197,8 +2202,8 @@ static void assert_lone_separator_ends_the_list(void) {
     true,
     LIST_CONTINUATION,
     0,
-    2,
-    'b'
+    3,
+    0
   );
 
   const int32_t lone_separator_input[] = {';', ' ', ';'};
@@ -3029,6 +3034,100 @@ static void assert_comment_boundary_contract(void) {
   tree_sitter_posix_sh_external_scanner_destroy(scanner);
 }
 
+// A comment that reaches the end of input takes the trailing boundary; a
+// newline-terminated comment keeps the comment-line boundary. Both probes
+// read the comment without consuming it into the token.
+static void assert_trailing_comment_boundary_contract(void) {
+  struct Scanner *scanner = tree_sitter_posix_sh_external_scanner_create();
+  assert(scanner != NULL);
+
+  bool valid_symbols[TOKEN_COUNT] = {false};
+  valid_symbols[COMMENT_BOUNDARY] = true;
+  valid_symbols[TRAILING_COMMENT_BOUNDARY] = true;
+
+  const int32_t input_end_comment[] = {'#', 'x'};
+  assert_scan_result(
+    scanner,
+    valid_symbols,
+    input_end_comment,
+    sizeof(input_end_comment) / sizeof(input_end_comment[0]),
+    true,
+    TRAILING_COMMENT_BOUNDARY,
+    0,
+    2,
+    0
+  );
+
+  const int32_t terminated_comment[] = {'#', 'x', '\n'};
+  assert_scan_result(
+    scanner,
+    valid_symbols,
+    terminated_comment,
+    sizeof(terminated_comment) / sizeof(terminated_comment[0]),
+    true,
+    COMMENT_BOUNDARY,
+    0,
+    2,
+    '\n'
+  );
+
+  // Where only the comment-line boundary is valid the classification does
+  // not read the comment at all.
+  valid_symbols[TRAILING_COMMENT_BOUNDARY] = false;
+  assert_scan_result(
+    scanner,
+    valid_symbols,
+    input_end_comment,
+    sizeof(input_end_comment) / sizeof(input_end_comment[0]),
+    true,
+    COMMENT_BOUNDARY,
+    0,
+    0,
+    '#'
+  );
+
+  tree_sitter_posix_sh_external_scanner_destroy(scanner);
+}
+
+// The newline ending a comment line reads ahead to the run's continuation
+// horizon, so the recorded lookahead invalidates the run when a later edit
+// changes what follows it.
+static void assert_comment_line_end_contract(void) {
+  struct Scanner *scanner = tree_sitter_posix_sh_external_scanner_create();
+  assert(scanner != NULL);
+
+  bool valid_symbols[TOKEN_COUNT] = {false};
+  valid_symbols[COMMENT_LINE_END] = true;
+
+  const int32_t command_ahead[] = {'\n', 'n', 'e', 'x', 't'};
+  assert_scan_result(
+    scanner,
+    valid_symbols,
+    command_ahead,
+    sizeof(command_ahead) / sizeof(command_ahead[0]),
+    true,
+    COMMENT_LINE_END,
+    1,
+    5,
+    0
+  );
+
+  const int32_t input_end[] = {'\n'};
+  assert_scan_result(
+    scanner,
+    valid_symbols,
+    input_end,
+    sizeof(input_end) / sizeof(input_end[0]),
+    true,
+    COMMENT_LINE_END,
+    1,
+    1,
+    0
+  );
+
+  tree_sitter_posix_sh_external_scanner_destroy(scanner);
+}
+
 static void assert_arithmetic_boundary_contract(void) {
   struct Scanner *scanner = tree_sitter_posix_sh_external_scanner_create();
   assert(scanner != NULL);
@@ -3740,6 +3839,8 @@ int main(void) {
   assert_lone_separator_ends_the_list();
   assert_closing_reserved_words_classify_deterministically();
   assert_comment_boundary_contract();
+  assert_trailing_comment_boundary_contract();
+  assert_comment_line_end_contract();
   assert_arithmetic_boundary_contract();
   assert_arithmetic_left_parenthesis_classification();
   assert_tilde_end_marker_contract();
